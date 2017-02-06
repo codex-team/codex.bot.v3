@@ -1,0 +1,5 @@
+*.pyc
+.idea
+.git
+configuration/globalcfg.py
+modules/_common/configuration.py

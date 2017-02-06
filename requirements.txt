@@ -1,0 +1,8 @@
+asyncio
+requests
+motor
+aiohttp
+pymongo
+aiohttp_jinja2
+huey
+redis
