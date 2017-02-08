@@ -1,7 +1,6 @@
 import json
 import logging
 
-import aiohttp_jinja2
 from aiohttp import web
 
 from components.simple import profile_update
@@ -50,7 +49,7 @@ async def telegram_callback(request):
         elif module == "telegram":
             Telegram.make_answer(message)
         else:
-            OBJECTS[module].run({"module": module,
+            OBJECTS[module].run_telegram({"module": module,
                                  "url": request.rel_url.path,
                                  "type": 0,  # Telegram message
                                  "data": {

@@ -35,4 +35,4 @@ def send_image(caption, image_filename, chat_id):
 
 def send_keyboard(message, buttons, chat_id):
     send_message({"cmd": "send_keyboard", "message": message,
-                  "buttons": json.dumps({'inline_keyboard': [buttons]}), "chat_id": chat_id})
+                  "buttons": json.dumps({'inline_keyboard': buttons}), "chat_id": chat_id})
