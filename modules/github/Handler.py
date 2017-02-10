@@ -1,10 +1,10 @@
 import logging
 
 from aiohttp import web
-from pymongo import MongoClient
 
 from components.simple import register_commands
-from .._common.configuration import MONGO_HOST, MONGO_PORT, MONGO_DB_NAME, QUEUE_SERVER
+from configuration.globalcfg import DB_SETTINGS
+from modules._common.CommonHandler import CommonHandler
 from modules.github.Module import GithubModule
 
 
@@ -18,7 +18,7 @@ async def github_callback(request):
 
         headers = {param: headers.get(param, "") for param in ['X-GitHub-Event', 'X-GitHub-Delivery', 'X-Hub-Signature']}
 
-        GithubHandler.run({"module": "github",
+        await GithubHandler.run_web({"module": "github",
                            "url": request.rel_url.path,
                            "type": 1,  # Github message
                            "data": {
@@ -33,10 +33,10 @@ async def github_callback(request):
     return web.Response(text='OK')
 
 
-class GithubHandler:
+class GithubHandler(CommonHandler):
 
     def __init__(self, web_app):
-        self.WEB_APP = web_app
+        super().__init__(web_app)
 
     def set_routes(self):
         self.WEB_APP.router.add_post('/github/{chat_hash}', github_callback)
@@ -45,8 +45,15 @@ class GithubHandler:
         register_commands('github', ['help', 'start', 'stop', 'delete'], global_commands)
 
     @staticmethod
-    def run(params):
-        MONGO_CLIENT = MongoClient(MONGO_HOST, MONGO_PORT)
-        MONGO_DB = MONGO_CLIENT[MONGO_DB_NAME]
-        github_module = GithubModule(QUEUE_SERVER, MONGO_DB)
-        github_module.callback(params)
+    async def run_telegram(params):
+        module = GithubModule(GithubHandler.get_mongo(DB_SETTINGS['MONGO_HOST'],
+                                                      DB_SETTINGS['MONGO_PORT'], DB_SETTINGS['MONGO_DB_NAME']),
+                              GithubHandler.get_redis(DB_SETTINGS['REDIS_HOST'], DB_SETTINGS['REDIS_PORT']))
+        await module.run_telegram(params)
+
+    @staticmethod
+    async def run_web(params):
+        module = GithubModule(GithubHandler.get_mongo(DB_SETTINGS['MONGO_HOST'], DB_SETTINGS['MONGO_PORT'],
+                                                      DB_SETTINGS['MONGO_DB_NAME']),
+                              GithubHandler.get_redis(DB_SETTINGS['REDIS_HOST'], DB_SETTINGS['REDIS_PORT']))
+        await module.run_web(params)

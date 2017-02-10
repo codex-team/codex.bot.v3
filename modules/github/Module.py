@@ -1,60 +1,55 @@
 import logging
 
+from configuration.globalcfg import URL
 from .._common.functions import send_message, send_text, send_image, generate_hash, send_keyboard
-
-from .._common.configuration import QUEUE_ROUTE, URL
 from .GithubParser import GithubParser
 
 
 class GithubModule:
-    def __init__(self, host, db):
-        self.host = host
+    def __init__(self, db, redis):
         self.db = db
-        self.route = '{}_github'.format(QUEUE_ROUTE)
+        self.redis = redis
 
-    def callback(self, params):
+    async def run_web(self, params):
         try:
-            # body_decoded = params json.loads(body.decode())
+            chat_hash = params['data']['chat_hash']
+            headers = params['data']['headers']
+            payload = params['data']['payload']
 
-            logging.warning("Github. Got: {}".format(params))
+            # If we've got an unexpected chat_id
+            if not self.check_chat(chat_hash):
+                logging.warning("Github. Callback. Warning: chat {} does not exist.".format(chat_hash))
+                return
 
-            # Process commands from Github Callback
-            if params['type'] == 1:
-                chat_hash = params['data']['chat_hash']
-                headers = params['data']['headers']
-                payload = params['data']['payload']
+            if headers.get('X-GitHub-Event', '') == "ping":
+                self.ping_event(payload['repository'], chat_hash)
+                logging.warning("Github. Ping event sent. chat={}, repo={}".format(chat_hash, payload['repository']))
+                return
 
-                # If we've got an unexpected chat_id
-                if not self.check_chat(chat_hash):
-                    logging.warning("Github. Callback. Warning: chat {} does not exist.".format(chat_hash))
-                    return
-
-                if headers.get('X-GitHub-Event', '') == "ping":
-                    self.ping_event(payload['repository'], chat_hash)
-                    logging.warning("Github. Ping event sent. chat={}, repo={}".format(chat_hash, payload['repository']))
-                    return
-
-                gh = GithubParser(payload)
-                gh.process()
-                chat_id = self.get_chat_id_by_hash(chat_hash)
-                send_text(gh.get_output(), chat_id)
-
-            # Process commands from Telegram Bot
-            if params['type'] == 0:
-                command_prefix = params['data']['command_prefix']
-                payload = params['data']['payload']
-                inline = params['data']['inline']
-
-                if inline:
-                    if inline.startswith('/github_delete'):
-                        repository_id = inline.split(" ")[-1]
-                        chat_id = payload['chat']['id']
-                        self.github_delete_repository(repository_id, chat_id)
-                else:
-                    self.make_answer(payload)
+            gh = GithubParser(payload)
+            gh.process()
+            chat_id = self.get_chat_id_by_hash(chat_hash)
+            send_text(gh.get_output(), chat_id)
 
         except Exception as e:
-            logging.error("Github module error: {}".format(e))
+            logging.error("Notifications module run_web error: {}".format(e))
+
+    async def run_telegram(self, params):
+        try:
+            command_prefix = params['data']['command_prefix']
+            payload = params['data']['payload']
+            inline = params['data']['inline']
+
+            if inline:
+                if inline.startswith('/github_delete'):
+                    repository_id = inline.split(" ")[-1]
+                    chat_id = payload['chat']['id']
+                    self.github_delete_repository(repository_id, chat_id)
+            else:
+                self.make_answer(payload)
+
+        except Exception as e:
+            logging.error("Notifications module run_telegram error: {}".format(e))
 
     def make_answer(self, message):
         try:
@@ -126,7 +121,7 @@ class GithubModule:
                         'callback_data': "/github_delete {}".format(str(repository['id']))
                         } for repository in repositories
                        ]
-            send_keyboard("Выберите репозиторий, который хотите отключить.\n", buttons, chat_id)
+            send_keyboard("Выберите репозиторий, который хотите отключить.\n", [buttons], chat_id)
 
     def github_delete_repository(self, repository_id, chat_id):
         repo = self.db.github_repositories.find_one({'id': int(repository_id), 'chats': chat_id})
