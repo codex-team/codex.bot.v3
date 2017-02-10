@@ -1,30 +1,28 @@
 import logging
 from components.simple import generate_hash
+from configuration.globalcfg import URL
 from .._common.functions import send_text
-from .._common.configuration import URL
 
 
 class NotificationsModule:
-    def __init__(self, host, db):
-        self.host = host
+    def __init__(self, db, redis):
         self.db = db
+        self.redis = redis
 
-    def callback(self, params):
+    async def run_web(self, params):
         try:
-
-            # Process commands from Web
-            if params['type'] == 1:
-                chat_hash = params['data']['chat_hash']
-                payload = params['data']['payload']
-                self.send_notification(payload, chat_hash)
-
-            # Process commands from Telegram Bot
-            if params['type'] == 0:
-                payload = params['data']['payload']
-                self.make_answer(payload)
-
+            chat_hash = params['data']['chat_hash']
+            payload = params['data']['payload']
+            self.send_notification(payload, chat_hash)
         except Exception as e:
-            logging.error("Notifications module error: {}".format(e))
+            logging.error("Notifications module run_web error: {}".format(e))
+
+    async def run_telegram(self, params):
+        try:
+            payload = params['data']['payload']
+            self.make_answer(payload)
+        except Exception as e:
+            logging.error("Notifications module run_telegram error: {}".format(e))
 
     def get_chat_token(self, chat_id):
         """
