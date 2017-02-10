@@ -6,10 +6,13 @@ import motor.motor_asyncio
 from aiohttp import web
 from core.telegram import Telegram
 from configuration.globalcfg import MONGO_DB_NAME, MONGO_HOST, TELEGRAM_API_TOKEN, OPTIONS, WEB_HOST, WEB_PORT, \
-    MONGO_PORT, COMMANDS, OBJECTS, MODULES, DB_SETTINGS
+    MONGO_PORT, COMMANDS, OBJECTS
+from modules._common.CommonHandler import CommonHandler
+from modules.github.Handler import GithubHandler
 
 from modules.metrika.Handler import MetrikaHandler
-
+from modules.notifications.Handler import NotificationsHandler
+from modules.reminder.Handler import ReminderHandler
 
 if __name__ == "__main__":
 
@@ -37,10 +40,17 @@ if __name__ == "__main__":
     ###
     MODULES = [
         (Telegram, (TELEGRAM_API_TOKEN, app), 'telegram'),
-        # (NotificationsHandler, (app,), 'notifications'),
-        # (GithubHandler, (app,), 'github'),
-        (MetrikaHandler, (app, ), 'metrika')
+        (NotificationsHandler, (app,), 'notifications'),
+        (GithubHandler, (app,), 'github'),
+        (MetrikaHandler, (app, ), 'metrika'),
+        # (ReminderHandler, (app,), 'reminder')
     ]
+
+    ###
+    # Check MongoDB connection TODO: Redis
+    ###
+    if not CommonHandler.check_connection():
+        exit()
 
     for module in MODULES:
         obj = module[0](*module[1])
