@@ -1,7 +1,7 @@
 import logging
 
+import pymongo
 import redis as redis
-from pymongo import MongoClient
 
 from configuration.globalcfg import DB_SETTINGS
 
@@ -26,9 +26,16 @@ class CommonHandler:
 
     @staticmethod
     def get_mongo(host, port, database):
-        client = MongoClient(host, port)
+        client = pymongo.MongoClient(host, port, serverSelectionTimeoutMS=10)
         db = client[database]
-        assert db
+
+        try:
+            client.server_info()
+        except pymongo.errors.ServerSelectionTimeoutError as e:
+            logging.error("Mongo server not found: {}".format(e))
+            return False
+            # raise ConnectionRefusedError("Mongo server not found: {}".format(e))
+
         return db
 
     @staticmethod
@@ -43,3 +50,9 @@ class CommonHandler:
     @staticmethod
     def run_web(params):
         raise NotImplementedError("Please Implement run_web staticmethod")
+
+    @staticmethod
+    def check_connection():
+        mongo = CommonHandler.get_mongo(DB_SETTINGS['MONGO_HOST'], DB_SETTINGS['MONGO_PORT'], DB_SETTINGS['MONGO_DB_NAME'])
+        rd = CommonHandler.get_redis(DB_SETTINGS['REDIS_HOST'], DB_SETTINGS['REDIS_PORT'])
+        return True if mongo else False

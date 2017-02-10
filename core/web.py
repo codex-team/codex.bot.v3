@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -19,6 +20,7 @@ async def telegram_callback(request):
         data = await request.text()
         update = json.loads(data)
         logging.info(update)
+
 
         request.app['db'].log_telegram_messages.insert_one(update)
 
@@ -49,7 +51,7 @@ async def telegram_callback(request):
         elif module == "telegram":
             Telegram.make_answer(message)
         else:
-            OBJECTS[module].run_telegram({"module": module,
+            await OBJECTS[module].run_telegram({"module": module,
                                  "url": request.rel_url.path,
                                  "type": 0,  # Telegram message
                                  "data": {
