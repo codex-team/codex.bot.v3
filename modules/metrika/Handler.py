@@ -14,7 +14,7 @@ class MetrikaHandler(CommonHandler):
     settings = {
         'ID': '33702b364e714c899541eff4cd344342',
         'PASS': '691755c5ea614410b23b5eec7683d245',
-        'OAUTH_TOKEN': 'AQAAAAAad3sxAAQMPJScKKqeN0Nukzh9P2v-GxA',
+        'OAUTH_TOKEN': 'AQAAAAAad3sxAAQMPJlBYuNkg01rhJwH1lwh9B4',
         'COUNTER_ID': '',
         'URL': 'https://api-metrika.yandex.ru/'
     }
@@ -29,9 +29,9 @@ class MetrikaHandler(CommonHandler):
         self.WEB_APP.router.add_get('/metrika/callback', self.metrika_yandex_callback)
 
     def register_commands(self, global_commands):
-        register_commands('metrika', ['help', 'start', 'stop', 'add_counter', 'del_counter'], global_commands)
+        register_commands('metrika', ['help', 'start', 'stop', 'add_counter', 'del_counter', 'today', 'weekly', 'monthly'], global_commands)
 
-    def run_telegram(self, params):
+    async def run_telegram(self, params):
         module = MetrikaModule(MetrikaHandler.get_mongo(DB_SETTINGS['MONGO_HOST'], DB_SETTINGS['MONGO_PORT'],
                                                         DB_SETTINGS['MONGO_DB_NAME']),
                                MetrikaHandler.get_redis(DB_SETTINGS['REDIS_HOST'], DB_SETTINGS['REDIS_PORT']),
@@ -74,6 +74,6 @@ class MetrikaHandler(CommonHandler):
                                          })
 
             except Exception as e:
-                return "Error: %s" % e
+                logging.error("Error: %s" % e)
 
         return web.Response(text='OK')

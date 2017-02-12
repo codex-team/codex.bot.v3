@@ -8,8 +8,8 @@ from core.telegram import Telegram
 from configuration.globalcfg import MONGO_DB_NAME, MONGO_HOST, TELEGRAM_API_TOKEN, OPTIONS, WEB_HOST, WEB_PORT, \
     MONGO_PORT, COMMANDS, OBJECTS
 from modules._common.CommonHandler import CommonHandler
-from modules.github.Handler import GithubHandler
 
+from modules.github.Handler import GithubHandler
 from modules.metrika.Handler import MetrikaHandler
 from modules.notifications.Handler import NotificationsHandler
 from modules.reminder.Handler import ReminderHandler
@@ -43,7 +43,7 @@ if __name__ == "__main__":
         (NotificationsHandler, (app,), 'notifications'),
         (GithubHandler, (app,), 'github'),
         (MetrikaHandler, (app, ), 'metrika'),
-        # (ReminderHandler, (app,), 'reminder')
+        (ReminderHandler, (app,), 'reminder')
     ]
 
     ###

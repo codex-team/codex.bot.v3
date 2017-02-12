@@ -1,4 +1,10 @@
 import logging
+
+import time
+from datetime import timedelta
+
+import pytz as pytz
+
 from components.simple import generate_hash
 from modules.metrika.MetrikaAPI import MetrikaAPI
 from .._common.functions import send_text, send_keyboard
@@ -54,6 +60,18 @@ class MetrikaModule:
 
             if command_prefix.startswith("/stop") or command_prefix.startswith("/metrika_stop"):
                 self.metrika_telegram_stop(chat_id)
+                return
+
+            if command_prefix.startswith("/today") or command_prefix.startswith("/metrika_today"):
+                self.metrika_telegram_daily("today", chat_id)
+                return
+
+            if command_prefix.startswith("/weekly") or command_prefix.startswith("/metrika_weekly"):
+                self.metrika_telegram_daily("weekly", chat_id)
+                return
+
+            if command_prefix.startswith("/monthly") or command_prefix.startswith("/metrika_monthly"):
+                self.metrika_telegram_daily("monthly", chat_id)
                 return
 
             send_text('%%i_dont_know_such_a_command%%', chat_id)
@@ -153,6 +171,22 @@ class MetrikaModule:
         else:
             send_text("Счетчик <{}> к данному чату не подключен.".format(params['name']), chat_id)
 
+    def metrika_telegram_daily(self, cmd, chat_id):
+        metrikas = list(self.db.metrika_counters.find({'chat_id': chat_id}))
+        message = "%s\n\n" % self.stats(cmd)
+        for metrika in metrikas:
+            try:
+                metrikaAPI = MetrikaAPI(metrika['access_token'], metrika['counter_id'], chat_id)
+                result = metrikaAPI.get_visit_statistics(cmd)
+                if result:
+                    users, hits = result
+                    message += "%s:\n%d уникальных посетителей\n%d просмотров\n\n" % (metrika['counter_name'],
+                                                                                      users, hits)
+            except Exception as e:
+                logging.warning("Metrika API exception: %s" % e)
+
+        send_text(message, chat_id)
+
     ### SUPPORT ###
 
     def get_counters(self, token, cmd):
@@ -200,3 +234,36 @@ class MetrikaModule:
         if len(buttons_row):
             buttons.append(buttons_row[:])
         return buttons
+
+    def stats(self, period="today"):
+        def month(n):
+            d = {1: "января", 2: "февраля", 3: "марта", 4: "апреля", 5: "мая", 6: "июня",
+                 7: "июля", 8: "августа", 9: "сентября", 10: "октября", 11: "ноября", 12: "декабря"}
+            return d[n]
+
+        def week(n):
+            d = {0: "понедельник", 1: "вторник", 2: "среда", 3: "четверг", 4: "пятница", 5: "суббота",
+                 6: "воскресенье"}
+            return d[n]
+
+        import datetime
+        t = datetime.datetime.now(pytz.timezone('Europe/Moscow'))
+
+        dt = time.strftime('%Y%m%d')
+        do = datetime.datetime.strptime(dt, '%Y%m%d')
+        message = ""
+
+        if period == "today":
+            message = "Сегодня %s %s, %s. Данные к %s:%s" % (str(t.day).zfill(2),
+                                                             month(t.month),
+                                                             week(t.weekday()),
+                                                             str(t.hour).zfill(2),
+                                                             str(t.minute).zfill(2))
+        if period == "weekly":
+            start = do - timedelta(days=do.weekday())
+            start.strftime('%Y%m%d')
+            message = "С понедельника, %s %s по сегодняшний день." % (str(start.day).zfill(2), month(start.month))
+        if period == "monthly":
+            message = "Данные за текущий месяц."
+
+        return message
