@@ -1,3 +1,4 @@
+import copy
 import logging
 
 import requests
@@ -7,17 +8,12 @@ from components.simple import register_commands
 from configuration.globalcfg import MODULES
 from .._common.CommonHandler import CommonHandler, DB_SETTINGS
 from modules.metrika.Module import MetrikaModule
+from .config import local_settings
 
 
 class MetrikaHandler(CommonHandler):
 
-    settings = {
-        'ID': '33702b364e714c899541eff4cd344342',
-        'PASS': '691755c5ea614410b23b5eec7683d245',
-        'OAUTH_TOKEN': 'AQAAAAAad3sxAAQMPJlBYuNkg01rhJwH1lwh9B4',
-        'COUNTER_ID': '',
-        'URL': 'https://api-metrika.yandex.ru/'
-    }
+    settings = copy.deepcopy(local_settings)
 
     def __init__(self, web_app):
         super().__init__(web_app)
@@ -61,7 +57,7 @@ class MetrikaHandler(CommonHandler):
                 s = requests.post('https://oauth.yandex.ru/token',
                                      data={'code': code, 'grant_type': 'authorization_code'},
                                      headers={'Content-type': 'application/x-www-form-urlencoded'},
-                                     auth=(MODULES['metrika']['ID'], MODULES['metrika']['PASS'])) # TODO:
+                                     auth=(self.settings['ID'], self.settings['PASSWORD'])) # TODO:
 
                 access_token = s.json()['access_token']
                 if access_token:
