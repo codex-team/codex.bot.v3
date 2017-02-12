@@ -34,7 +34,8 @@ class MetrikaHandler(CommonHandler):
     async def run_telegram(self, params):
         module = MetrikaModule(MetrikaHandler.get_mongo(DB_SETTINGS['MONGO_HOST'], DB_SETTINGS['MONGO_PORT'],
                                                         DB_SETTINGS['MONGO_DB_NAME']),
-                               MetrikaHandler.get_redis(DB_SETTINGS['REDIS_HOST'], DB_SETTINGS['REDIS_PORT']),
+                               MetrikaHandler.get_redis(DB_SETTINGS['REDIS_HOST'], DB_SETTINGS['REDIS_PORT'],
+                                                        DB_SETTINGS['REDIS_PASSWORD']),
                                MetrikaHandler.settings)
         module.run_telegram(params)
 

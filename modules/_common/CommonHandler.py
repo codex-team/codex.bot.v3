@@ -39,8 +39,8 @@ class CommonHandler:
         return db
 
     @staticmethod
-    def get_redis(host, port):
-        rd = redis.StrictRedis(host=host, port=port, db=0, decode_responses=True)
+    def get_redis(host, port, password=None):
+        rd = redis.StrictRedis(host=host, port=port, password=password, db=0, decode_responses=True)
         assert rd
         return rd
 
