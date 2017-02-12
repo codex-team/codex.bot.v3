@@ -6,6 +6,7 @@ from datetime import timedelta
 import pytz as pytz
 
 from components.simple import generate_hash
+from core.telegram import Telegram
 from modules.metrika.MetrikaAPI import MetrikaAPI
 from .._common.functions import send_text, send_keyboard
 
@@ -74,7 +75,7 @@ class MetrikaModule:
                 self.metrika_telegram_daily("monthly", chat_id)
                 return
 
-            send_text('%%i_dont_know_such_a_command%%', chat_id)
+            Telegram.unknown_command(chat_id)
 
         except Exception as e:
             logging.error("Error while Metrika make_answer: {}".format(e))

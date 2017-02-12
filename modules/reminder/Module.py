@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from core.telegram import Telegram
 from modules._common.functions import send_text
 
 
@@ -31,7 +32,7 @@ class ReminderModule:
             if command_prefix.startswith("/remind"):
                 return await self.reminder_telegram_remind(message, chat_id)
 
-            send_text('%%i_dont_know_such_a_command%%', chat_id)
+            Telegram.unknown_command(chat_id)
 
         except Exception as e:
             logging.error("Error while Reminder make_answer: {}".format(e))

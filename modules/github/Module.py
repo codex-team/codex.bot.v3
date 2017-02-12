@@ -1,6 +1,7 @@
 import logging
 
 from configuration.globalcfg import URL
+from core.telegram import Telegram
 from .._common.functions import send_message, send_text, send_image, generate_hash, send_keyboard
 from .GithubParser import GithubParser
 
@@ -71,7 +72,7 @@ class GithubModule:
                 self.github_telegram_stop(chat_id)
                 return
 
-            send_text('%%i_dont_know_such_a_command%%', chat_id)
+            Telegram.unknown_command(chat_id)
 
         except Exception as e:
             logging.error("Error while Github make_answer: {}".format(e))
