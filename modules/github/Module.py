@@ -1,9 +1,11 @@
 import logging
+import requests
 
 from configuration.globalcfg import URL
 from core.telegram import Telegram
 from .._common.functions import send_message, send_text, send_image, generate_hash, send_keyboard
 from .GithubParser import GithubParser
+from modules.github.authcfg import APP, AUTH_SCOPE
 
 
 class GithubModule:
@@ -13,24 +15,44 @@ class GithubModule:
 
     async def run_web(self, params):
         try:
-            chat_hash = params['data']['chat_hash']
-            headers = params['data']['headers']
-            payload = params['data']['payload']
 
-            # If we've got an unexpected chat_id
-            if not self.check_chat(chat_hash):
-                logging.warning("Github. Callback. Warning: chat {} does not exist.".format(chat_hash))
+            if params['type'] == 1:
+                chat_hash = params['data']['chat_hash']
+                headers = params['data']['headers']
+                payload = params['data']['payload']
+
+                # If we've got an unexpected chat_id
+                if not self.check_chat(chat_hash):
+                    logging.warning("Github. Callback. Warning: chat {} does not exist.".format(chat_hash))
+                    return
+
+                if headers.get('X-GitHub-Event', '') == "ping":
+                    self.ping_event(payload['repository'], chat_hash)
+                    logging.warning("Github. Ping event sent. chat={}, repo={}".format(chat_hash, payload['repository']))
+                    return
+
+                gh = GithubParser(payload)
+                gh.process()
+                chat_id = self.get_chat_id_by_hash(chat_hash)
+                send_text(gh.get_output(), chat_id)
                 return
 
-            if headers.get('X-GitHub-Event', '') == "ping":
-                self.ping_event(payload['repository'], chat_hash)
-                logging.warning("Github. Ping event sent. chat={}, repo={}".format(chat_hash, payload['repository']))
-                return
+            if params['type'] == 2:
+                user_hash = params['data']['user_hash']
+                chat_hash = params['data']['chat_hash']
+                access_token = params['data']['access_token']
 
-            gh = GithubParser(payload)
-            gh.process()
-            chat_id = self.get_chat_id_by_hash(chat_hash)
-            send_text(gh.get_output(), chat_id)
+                chat_id = self.get_chat_id_by_hash(chat_hash)
+
+                if not self.db.telegram_users.find_one({'hash': user_hash}):
+                    logging.warning("Github. Auth callback. Warning: user {} does not exist.".format(user_hash))
+                    return
+
+                if not self.db.github_users.find_one({'hash': user_hash}):
+                    self.db.github_users.insert_one({'hash': user_hash, 'token': access_token})
+                    send_text("Аккаунт успешно привязан", chat_id)
+                else:
+                    send_text("Ваш аккаунт уже был привязан", chat_id)
 
         except Exception as e:
             logging.error("Notifications module run_web error: {}".format(e))
@@ -70,6 +92,10 @@ class GithubModule:
 
             if command_prefix.startswith("/stop") or command_prefix.startswith("/github_stop"):
                 self.github_telegram_stop(chat_id)
+                return
+
+            if command_prefix.startswith("/auth") or command_prefix.startswith("/github_auth"):
+                self.github_telegram_auth(message['from'], message['chat'])
                 return
 
             Telegram.unknown_command(chat_id)
@@ -134,6 +160,31 @@ class GithubModule:
         if repo:
             send_text("Репозиторий {} отключен.".format(repo['name']), chat_id)
             self.db.github_repositories.update_one({'_id': repo['_id']}, {'$set': {'chats': chats}})
+
+    def github_telegram_auth(self, user, chat):
+
+        user_hash = generate_hash()
+        chat_id = chat['id']
+        chat_type = chat['type']
+
+        if chat_type != 'private':
+            send_text('Привязать github аккаунт возможно только в личном чате с ботом', chat_id)
+            return
+
+        chat_hash = self.get_chat_token(chat_id)
+
+        if not self.db.telegram_users.find_one({'id': user['id']}):
+            self.db.telegram_users.insert_one({'id': user['id'], 'hash': user_hash})
+        else:
+            user_hash = self.db.telegram_users.find_one({'id': user['id']})['hash']
+
+        send_text('Чтобы привязать аккаунт, пройдите по ссылке: \n\n'+
+                  'https://github.com/login/oauth/authorize?'+
+                  'client_id={}&scope={}&state={}&redirect_uri={}github/auth/{}'.format(APP['CLIENT_ID'],
+                                                                                        ','.join(AUTH_SCOPE),
+                                                                                        chat_hash,
+                                                                                        URL,
+                                                                                        user_hash), chat_id)
 
     ############### EVENTS ################
 
