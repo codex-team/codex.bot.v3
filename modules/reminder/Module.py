@@ -91,7 +91,7 @@ class ReminderModule:
         else:
             msg = 'Записи: \n'
             for note in notes:
-                msg += "#{} – {}\n".format(note['id'], note['note'])
+                msg += "#{} – {}\n".format(note.get('id', ''), note.get('note', ''))
             send_text(msg, chat_id)
 
     def remove_note(self, message, chat_id):
@@ -101,7 +101,7 @@ class ReminderModule:
             # send_text("Input note id /notedel command. \nExample: /notedel 24", chat_id)
             if len(notes):
                 send_keyboard("Выберите записку, которую хотите удалить.\n",
-                          create_buttons_list(notes, lambda x: {'text': x['note'], 'callback_data': '/reminder_del #{}'.format(x['id'])}),
+                          create_buttons_list(notes, lambda x: {'text': x.get('note', ''), 'callback_data': '/reminder_del #{}'.format(x.get('id', ''))}),
                           chat_id)
             else:
                 send_text("Записей не найдено", chat_id)

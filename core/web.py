@@ -5,7 +5,7 @@ import logging
 from aiohttp import web
 
 from components.simple import profile_update
-from configuration.globalcfg import COMMANDS, OBJECTS
+from configuration.globalcfg import COMMANDS, OBJECTS, BOT_NAME
 
 
 async def telegram_callback(request):
@@ -37,10 +37,10 @@ async def telegram_callback(request):
 
         profile_update(request.app['db'], user_id, message['from'])
 
-        if not message['text'].startswith("/") and "@test_codex_bot" not in message['text']:
+        if not message['text'].startswith("/") and BOT_NAME not in message['text']:
             return web.Response(text='OK')
 
-        message['text'] = message['text'].replace("@test_codex_bot", "")
+        message['text'] = message['text'].replace(BOT_NAME, "")
         command_prefix = message['text'].split(' ')[0]
         module = COMMANDS.get(command_prefix)
 

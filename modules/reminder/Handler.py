@@ -15,7 +15,7 @@ class ReminderHandler(CommonHandler):
         pass
 
     def register_commands(self, global_commands):
-        register_commands('reminder', ['help', 'start', 'remind', 'notes', 'noteadd', 'notedel', 'reminder_del'], global_commands)
+        register_commands('reminder', ['help', 'start', 'remind', 'notes', 'noteadd', 'notedel', 'del'], global_commands)
 
     async def run_telegram(self, params):
         module = ReminderModule(ReminderHandler.get_mongo(DB_SETTINGS['MONGO_HOST'], DB_SETTINGS['MONGO_PORT'],
