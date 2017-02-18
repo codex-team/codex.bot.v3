@@ -1,8 +1,9 @@
 import asyncio
 import logging
 
+from components.simple import create_buttons_list
 from core.telegram import Telegram
-from modules._common.functions import send_text
+from modules._common.functions import send_text, send_keyboard
 
 
 class ReminderModule:
@@ -13,10 +14,25 @@ class ReminderModule:
     async def run_telegram(self, params):
         try:
             payload = params['data']['payload']
-            await self.make_answer(payload)
+            if not params['data']['inline']:
+                await self.make_answer(payload)
+            else:
+                self.process_inline_command(payload)
 
         except Exception as e:
             logging.error("Metrika module run_telegram error: {}".format(e))
+
+    def process_inline_command(self, message):
+        try:
+            command_prefix = message['text'].split(' ')[0]
+            chat_id = message['chat']['id']
+
+            if command_prefix.startswith("/reminder_del") or command_prefix.startswith("/reminder_reminder_del"):
+                cache_id = message["text"].split("#")[-1]
+                self.remove_note_by_id(cache_id, chat_id)
+
+        except Exception as e:
+            logging.error("Error while Metrika process_inline_command: {}".format(e))
 
     async def make_answer(self, message):
         try:
@@ -29,8 +45,20 @@ class ReminderModule:
             if command_prefix.startswith("/start") or command_prefix.startswith("/reminder_start"):
                 return send_text("Just press /remind <text>", chat_id)
 
-            if command_prefix.startswith("/remind"):
+            if command_prefix == "/remind":
                 return await self.reminder_telegram_remind(message, chat_id)
+
+            if command_prefix.startswith("/noteadd"):
+                self.add_note(message, chat_id)
+                return
+
+            if command_prefix.startswith("/notedel"):
+                self.remove_note(message, chat_id)
+                return
+
+            if command_prefix.startswith("/notes"):
+                self.show_notes(chat_id)
+                return
 
             Telegram.unknown_command(chat_id)
 
@@ -45,3 +73,45 @@ class ReminderModule:
         else:
             await asyncio.sleep(5)
             send_text("Hi! Do you remember about: '{}'?".format(message_to_remind[1]), chat_id)
+
+    def add_note(self, message, chat_id):
+        note_text = message['text'].split(' ', 1)
+        if len(note_text) < 2:
+            send_text("Input message after /noteadd command. \nExample: /noteadd Implement new super feature.", chat_id)
+            return
+        else:
+            id = self.db.reminder_notes.count({'chat_id': chat_id}) + 1
+            self.db.reminder_notes.insert_one({'note': note_text[1], 'chat_id': chat_id, 'id': id})
+            send_text("Оки. :)", chat_id)
+
+    def show_notes(self, chat_id):
+        notes = list(self.db.reminder_notes.find({'chat_id': chat_id}))
+        if not len(notes):
+            send_text("Записей не найдено", chat_id)
+        else:
+            msg = 'Записи: \n'
+            for note in notes:
+                msg += "#{} – {}\n".format(note['id'], note['note'])
+            send_text(msg, chat_id)
+
+    def remove_note(self, message, chat_id):
+        id = message['text'].split(' ', 1)
+        if len(id) < 2:
+            notes = list(self.db.reminder_notes.find({'chat_id': chat_id}))
+            # send_text("Input note id /notedel command. \nExample: /notedel 24", chat_id)
+            if len(notes):
+                send_keyboard("Выберите записку, которую хотите удалить.\n",
+                          create_buttons_list(notes, lambda x: {'text': x['note'], 'callback_data': '/reminder_del #{}'.format(x['id'])}),
+                          chat_id)
+            else:
+                send_text("Записей не найдено", chat_id)
+            return
+        else:
+            self.remove_note_by_id(id[1], chat_id)
+
+    def remove_note_by_id(self, id, chat_id):
+        result = self.db.reminder_notes.delete_many({'id': int(id), 'chat_id': chat_id})
+        if result.deleted_count == 1:
+            send_text("Удалена запись #{}".format(id), chat_id)
+        else:
+            send_text("Ошибка. Такая запись не найдена.", chat_id)

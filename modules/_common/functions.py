@@ -16,6 +16,7 @@ def generate_hash(size=6, chars=string.ascii_uppercase + string.digits):
 
 def send_message(params):
     from core.telegram import send_message
+    print(params)
     send_message(params)
 
 

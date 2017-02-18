@@ -106,3 +106,20 @@ def profile_update(db, user_id, model):
         db.users.insert_one(model)
     else:
         db.users.update_one({'id': user_id}, {'$set': {'time': time.time()}})
+
+
+def create_buttons_list(arr, func=None):
+    buttons = []
+    buttons_row = []
+    for element in arr:
+        if func:
+            imp = func(element)
+        else:
+            imp = element
+        buttons_row.append(imp)
+        if len(buttons_row) == 2:
+            buttons.append(buttons_row[:])
+            buttons_row = []
+    if len(buttons_row):
+        buttons.append(buttons_row[:])
+    return buttons
