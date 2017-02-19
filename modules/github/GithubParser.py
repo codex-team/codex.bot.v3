@@ -72,11 +72,15 @@ class GithubParser:
         repository_name = self.data['repository']['full_name']
 
         if action == "opened" or action == "closed":
-            template.append("%s %s %sissue \"%s\" [%s]" % (author, action,
-                                                      "new " if action == "opened" else "",
-                                                      issue['title'],
-                                                      repository_name)
-                            )
+            template.append("{} {} {} {}issue «<code>{}</code>» [<a href=\"{}\">{}</a>]".format(
+                    "👉" if action == "opened" else "✅",
+                    author,
+                    action,
+                    "new " if action == "opened" else "",
+                    issue['title'],
+                    'https://github.com/' + repository_name,
+                    repository_name
+            ))
             template.append("\n%s\n" % issue['body']) if len(issue['body']) else template.append("")
             template.append("%s\n" % issue['html_url'])
 
@@ -98,13 +102,18 @@ class GithubParser:
         repository_name = self.data['repository']['full_name']
 
         if action == "opened" or action == "closed":
-            template.append("%s %s %spull request \"%s\" from %s to %s [%s]" % (author,
-                                                                             action,
-                                                                             "new " if action == "opened" else "",
-                                                                             pull_request['title'],
-                                                                             pull_request['head']['ref'],
-                                                                             pull_request['base']['ref'],
-                                                                             repository_name))
+            template.append(
+                "😼 {} {} {}pull request <code>«{}»</code> from <b>{}</b> to <b>{}</b> [<a href=\"{}\">{}</a>]".format(
+                    author,
+                    action,
+                    "new " if action == "opened" else "",
+                    pull_request['title'],
+                    pull_request['head']['ref'],
+                    pull_request['base']['ref'],
+                    'https://github.com/' + repository_name,
+                    repository_name
+                )
+            )
 
             template.append("\n%s\n" % pull_request['body']) if len(pull_request['body']) else template.append("")
             template.append("%s\n" % pull_request['html_url'])
