@@ -20,13 +20,14 @@ def generate_hash(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.SystemRandom().choice(chars) for _ in range(size))
 
 
-def send_to_chat(message, chat_id, api_token=TELEGRAM_API_TOKEN, disable_web_page_preview=True):
+def send_to_chat(message, chat_id, api_token=TELEGRAM_API_TOKEN, disable_web_page_preview=True, parse_mode='HTML'):
     """
     Sends message to the chat with chat_id
     :param message: Text
     :param chat_id: Int
     :param api_token: Token for Telegram access (https://core.telegram.org/bots#botfather)
     :param disable_web_page_preview: Bool
+    :param parse_mode: Text ('HTML' or 'Markdown')
     :return: {True}
     """
 
@@ -34,6 +35,7 @@ def send_to_chat(message, chat_id, api_token=TELEGRAM_API_TOKEN, disable_web_pag
         'text': message,
         'chat_id': chat_id,
         'disable_web_page_preview': 'true' if disable_web_page_preview else 'false',
+        'parse_mode': parse_mode
     }
 
     query = 'https://api.telegram.org/bot%s/sendMessage?%s' % (api_token, urlencode(data))
