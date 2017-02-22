@@ -32,22 +32,32 @@ async def telegram_callback(request):
         else:
             message = update['message']
 
+        entities = message['entities']
+        commands = list(map(lambda x: message['text'][x['offset']:x['offset']+x['length']], entities))
         chat_id = message['chat']['id']
         user_id = message['from']['id']
+        mentioned = False
 
         profile_update(request.app['db'], user_id, message['from'])
 
         if not message['text'].startswith("/") and BOT_NAME not in message['text']:
-            return web.Response(text='OK')
+            return web.Response(text='NOT OK')
 
-        message['text'] = message['text'].replace(BOT_NAME, "")
+        if BOT_NAME in message['text']:
+            mentioned = True
+            message['text'] = message['text'].replace(BOT_NAME, "")
+
         command_prefix = message['text'].split(' ')[0]
         module = COMMANDS.get(command_prefix)
 
         logging.info("Telegram. Got cmd={}, module={}".format(command_prefix, module))
 
         if not module:
-            Telegram.unknown_command(chat_id)
+            if mentioned:
+                Telegram.unknown_command(chat_id)
+            else:
+                # Ignore unknown messages without @BOT_NAME
+                pass
         elif module == "telegram":
             Telegram.make_answer(message)
         else:
@@ -58,7 +68,8 @@ async def telegram_callback(request):
                                      "command_prefix": command_prefix,
                                      "payload": message,
                                      "inline": inline
-                                 }
+                                 },
+                                 "commands": commands
                                  })
     except Exception as e:
         logging.warning("Message process error: [%s]" % e)
