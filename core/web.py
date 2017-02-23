@@ -21,7 +21,6 @@ async def telegram_callback(request):
         update = json.loads(data)
         logging.info(update)
 
-
         request.app['db'].log_telegram_messages.insert_one(update)
 
         inline = False
@@ -75,3 +74,27 @@ async def telegram_callback(request):
         logging.warning("Message process error: [%s]" % e)
 
     return web.Response(text='OK')
+
+async def slack_callback(request):
+    """
+    Process messages from telegram bot
+    :return:
+    """
+
+    try:
+        data = await request.text()
+
+        # request.app['db'].log_telegram_messages.insert_one(update)
+        logging.info(data)
+        #
+        # if 'challenge' in update:
+        #     return web.Response(text=update['challenge'])
+        #
+        # chat_id = update['event']['channel']
+        # message = update['event']['text']
+        # user_id = update['event']['user']
+
+        return web.Response(text="OK")
+
+    except Exception as e:
+        logging.error(e)
