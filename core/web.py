@@ -31,7 +31,7 @@ async def telegram_callback(request):
         else:
             message = update['message']
 
-        entities = message['entities']
+        entities = message.get('entities', [])
         commands = list(map(lambda x: message['text'][x['offset']:x['offset']+x['length']], entities))
         chat_id = message['chat']['id']
         user_id = message['from']['id']
