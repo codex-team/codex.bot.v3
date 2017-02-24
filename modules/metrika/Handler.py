@@ -5,7 +5,6 @@ import requests
 from aiohttp import web
 
 from components.simple import register_commands
-from configuration.globalcfg import MODULES
 from .._common.CommonHandler import CommonHandler, DB_SETTINGS
 from modules.metrika.Module import MetrikaModule
 from .config import local_settings
