@@ -20,7 +20,7 @@ def generate_hash(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.SystemRandom().choice(chars) for _ in range(size))
 
 
-def send_to_chat(message, chat_id, api_token=TELEGRAM_API_TOKEN, disable_web_page_preview=True, parse_mode='HTML'):
+def send_to_chat(message, chat_id, api_token=TELEGRAM_API_TOKEN, disable_web_page_preview=True, parse_mode=''):
     """
     Sends message to the chat with chat_id
     :param message: Text

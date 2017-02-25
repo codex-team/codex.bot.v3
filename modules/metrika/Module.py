@@ -154,7 +154,7 @@ class MetrikaModule:
     def metrika_telegram_add(self, chat_id, params):
         counter = self.db.metrika_counters.find_one({'chat_id': chat_id, 'counter_id': params['counter_id']})
         if counter:
-            send_text("Счетчик ({}) уже прикреплен к данному чату.".format(params['name']), chat_id)
+            send_text("Счетчик <{}> уже прикреплен к данному чату.".format(params['name']), chat_id)
         else:
             self.db.metrika_counters.insert_one({
                 'chat_id': chat_id,
@@ -162,15 +162,15 @@ class MetrikaModule:
                 'counter_name': params['name'],
                 'access_token': params['access_token']
             })
-            send_text("Готово! Сайт ({}) успешно подключен.".format(params['name']), chat_id)
+            send_text("Готово! Сайт <{}> успешно подключен.".format(params['name']), chat_id)
             self.metrika_telegram_help(chat_id)
 
     def metrika_telegram_del(self, chat_id, params):
         result = self.db.metrika_counters.delete_one({'chat_id': chat_id, 'counter_id': params['counter_id']})
         if result.deleted_count:
-            send_text("Счетчик ({}) успешно откреплен от данного чата.".format(params['name']), chat_id)
+            send_text("Счетчик <{}> успешно откреплен от данного чата.".format(params['name']), chat_id)
         else:
-            send_text("Счетчик ({}) к данному чату не подключен.".format(params['name']), chat_id)
+            send_text("Счетчик <{}> к данному чату не подключен.".format(params['name']), chat_id)
 
     def metrika_telegram_daily(self, cmd, chat_id):
         metrikas = list(self.db.metrika_counters.find({'chat_id': chat_id}))

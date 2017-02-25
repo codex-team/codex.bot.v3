@@ -3,7 +3,7 @@ import requests
 
 from configuration.globalcfg import URL
 from core.telegram import Telegram
-from .._common.functions import send_message, send_text, send_image, generate_hash, send_keyboard
+from .._common.functions import send_text, send_image, generate_hash, send_keyboard
 from .GithubParser import GithubParser
 from modules.github.authcfg import APP, AUTH_SCOPE
 
@@ -34,7 +34,7 @@ class GithubModule:
                 gh = GithubParser(payload)
                 gh.process()
                 chat_id = self.get_chat_id_by_hash(chat_hash)
-                send_text(gh.get_output(), chat_id)
+                send_text(gh.get_output(), chat_id, parse_mode='HTML')
                 return
 
             if params['type'] == 2:
@@ -80,10 +80,7 @@ class GithubModule:
             chat_id = message['chat']['id']
 
             if command_prefix.startswith("/help") or command_prefix.startswith("/github_help"):
-                send_message({"cmd": "send_message",
-                                            "message": self.github_telegram_help(chat_id),
-                                            "chat_id": chat_id
-                                            })
+                send_text(self.github_telegram_help(chat_id), chat_id)
                 return
 
             if command_prefix.startswith("/start") or command_prefix.startswith("/github_start"):
