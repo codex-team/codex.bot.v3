@@ -26,6 +26,10 @@ class MetrikaHandler(CommonHandler):
     def register_commands(self, global_commands):
         register_commands('metrika', ['help', 'start', 'stop', 'add_counter', 'del_counter', 'today', 'weekly', 'monthly'], global_commands)
 
+    @staticmethod
+    def get_description():
+        return '/metrika — Модуль Яндекс.Метрики. Умеет присылать статистику за день и неделю.'
+
     async def run_telegram(self, params):
         module = MetrikaModule(MetrikaHandler.get_mongo(DB_SETTINGS['MONGO_HOST'], DB_SETTINGS['MONGO_PORT'],
                                                         DB_SETTINGS['MONGO_DB_NAME']),
