@@ -5,7 +5,7 @@ import requests
 import logging
 from urllib.parse import urlencode
 from components.simple import send_to_chat, register_commands, send_image_to_chat, send_object_to_chat
-from configuration.globalcfg import TELEGRAM_WEBHOOK
+from configuration.globalcfg import TELEGRAM_WEBHOOK, OBJECTS
 from core.web import telegram_callback
 
 
@@ -88,7 +88,14 @@ class Telegram:
             chat_id = message['chat']['id']
 
             if command_prefix.startswith("/help") or command_prefix.startswith("/telegram_help"):
-                send_to_chat("Да все просто!", chat_id)
+                msg = 'Инструкция по работе с ботом. Выберите раздел для просмотра доступных команд.\n'
+
+                for name in OBJECTS:
+                    if hasattr(OBJECTS[name], 'get_description'):
+                        msg += '\n' + OBJECTS[name].get_description()
+
+                send_to_chat(msg, chat_id)
+
                 return
 
             if command_prefix.startswith("/start") or command_prefix.startswith("/telegram_start"):

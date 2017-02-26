@@ -22,6 +22,10 @@ class GithubHandler(CommonHandler):
     def register_commands(self, global_commands):
         register_commands('github', ['help', 'start', 'stop', 'delete', 'auth'], global_commands)
 
+    @staticmethod
+    def get_description():
+        return '/github — Модуль GitHub. Может присылать уведомления о новых коммитах, pull-реквестах.'
+
     async def run_telegram(self, params):
         module = GithubModule(GithubHandler.get_mongo(DB_SETTINGS['MONGO_HOST'],
                                                       DB_SETTINGS['MONGO_PORT'], DB_SETTINGS['MONGO_DB_NAME']),

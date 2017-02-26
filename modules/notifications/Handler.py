@@ -45,6 +45,10 @@ class NotificationsHandler(CommonHandler):
         register_commands('notifications', ['help', 'start'], global_commands)
 
     @staticmethod
+    def get_description():
+        return '/notifications — Модуль для отправки сообщений в чат.'
+
+    @staticmethod
     async def run_telegram(params):
         module = NotificationsModule(NotificationsHandler.get_mongo(DB_SETTINGS['MONGO_HOST'],
                                                                     DB_SETTINGS['MONGO_PORT'],
