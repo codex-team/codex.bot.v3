@@ -87,7 +87,7 @@ class GithubParser:
         if action == 'assigned':
             assignee = self.data['assignee']['login']
 
-            template.append('📌 {author} has assigned {assignee} to issue «<code>{issue_title}</code>» [{repository_name}]'.format(
+            template.append('📌 {assignee} has been assigned to the issue «<code>{issue_title}</code>» by {author} [{repository_name}]'.format(
                 author=author,
                 assignee=assignee,
                 issue_title=issue['title'],
