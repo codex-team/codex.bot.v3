@@ -1,0 +1,37 @@
+
+URL = '' # URL должен быть формата: "https://{...}/"
+BOT_NAME = '' # Название бота должно начинаться с @
+
+WEB_HOST = '127.0.0.1'
+WEB_PORT = 1339
+
+DB_SETTINGS = {
+    'MONGO_HOST': '127.0.0.1',
+    'MONGO_PORT': 27017,
+    'MONGO_DB_NAME': 'codex_bot_3',
+    'REDIS_HOST': '127.0.0.1',
+    'REDIS_PORT': 6379,
+    'REDIS_PASSWORD': None
+}
+
+MONGO_HOST = '127.0.0.1'
+MONGO_PORT = 27017
+MONGO_DB_NAME = 'codex_bot_3'
+
+REDIS_HOST = '127.0.0.1'
+REDIS_PORT = 6379
+
+TELEGRAM_API_TOKEN = ''
+TELEGRAM_WEBHOOK = '{}telegram/callback'.format(URL)
+
+SLACK_ID = ''
+SLACK_SECRET = ''
+SLACK_TOKEN = ''
+
+OPTIONS = {
+    'set_webhook': True
+}
+
+COMMANDS = {}
+
+OBJECTS = {}

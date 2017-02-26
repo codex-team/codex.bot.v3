@@ -4,9 +4,11 @@ import logging
 import motor.motor_asyncio
 
 from aiohttp import web
+
+from core.slack import Slack
 from core.telegram import Telegram
 from configuration.globalcfg import MONGO_DB_NAME, MONGO_HOST, TELEGRAM_API_TOKEN, OPTIONS, WEB_HOST, WEB_PORT, \
-    MONGO_PORT, COMMANDS, OBJECTS
+    MONGO_PORT, COMMANDS, OBJECTS, SLACK_TOKEN
 from modules._common.CommonHandler import CommonHandler
 
 from modules.github.Handler import GithubHandler
@@ -40,6 +42,7 @@ if __name__ == "__main__":
     ###
     MODULES = [
         (Telegram, (TELEGRAM_API_TOKEN, app), 'telegram'),
+        (Slack, (SLACK_TOKEN, app), 'slack'),
         (NotificationsHandler, (app,), 'notifications'),
         (GithubHandler, (app,), 'github'),
         (MetrikaHandler, (app, ), 'metrika'),
