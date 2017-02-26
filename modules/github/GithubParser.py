@@ -120,33 +120,6 @@ class GithubParser:
 
         return '\n'.join(template)
 
-    def process_assignee(self):
-        """
-        Builds text message about person assigned/unassigned to issue
-        :param issue:
-        """
-        template = []
-
-        author = self.data['sender']['login']
-        issue = self.data['issue']
-        action = self.data['action']
-        repository_name = self.data['repository']['full_name']
-
-        if action == "opened" or action == "closed":
-            template.append("{} {} {} {}issue «<code>{}</code>» [<a href=\"{}\">{}</a>]".format(
-                    "👉" if action == "opened" else "✅",
-                    author,
-                    action,
-                    "new " if action == "opened" else "",
-                    issue['title'],
-                    'https://github.com/' + repository_name,
-                    repository_name
-            ))
-            template.append("\n%s\n" % issue['body']) if len(issue['body']) else template.append("")
-            template.append("%s\n" % issue['html_url'])
-
-        return '\n'.join(template)
-
     def process(self):
         """
         Render text for sending to a telegram chat
