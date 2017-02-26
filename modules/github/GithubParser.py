@@ -84,6 +84,18 @@ class GithubParser:
             template.append("\n%s\n" % issue['body']) if len(issue['body']) else template.append("")
             template.append("%s\n" % issue['html_url'])
 
+        if action == 'assigned':
+            assignee = self.data['assignee']['login']
+
+            template.append('📍 {author} has assigned {assignee} to issue «<code>{issue_title}</code>» [{repository_name}]'.format(
+                author=author,
+                assignee=assignee,
+                issue_title=issue['title'],
+                repository_name=repository_name
+            ))
+            template.append('')
+            template.append(issue['html_url'])
+
         return '\n'.join(template)
 
     def process_pull_request(self):
