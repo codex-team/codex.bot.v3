@@ -24,7 +24,7 @@ class MetrikaHandler(CommonHandler):
         self.WEB_APP.router.add_get('/metrika/callback', self.metrika_yandex_callback)
 
     def register_commands(self, global_commands):
-        register_commands('metrika', ['help', 'start', 'stop', 'add_counter', 'del_counter', 'today', 'weekly', 'monthly'], global_commands)
+        register_commands('metrika', ['help', 'start', 'stop', 'add_counter', 'del_counter', 'today', 'weekly', 'monthly', 'subscribe', 'unsubscribe'], global_commands)
 
     @staticmethod
     def get_description():

@@ -5,10 +5,12 @@ from datetime import timedelta
 
 import pytz as pytz
 
+from configuration.globalcfg import scheduler
 from components.simple import generate_hash
 from core.telegram import Telegram
 from modules.metrika.MetrikaAPI import MetrikaAPI
 from .._common.functions import send_text, send_keyboard
+
 
 
 class MetrikaModule:
@@ -73,6 +75,14 @@ class MetrikaModule:
 
             if command_prefix.startswith("/monthly") or command_prefix.startswith("/metrika_monthly"):
                 self.metrika_telegram_daily("monthly", chat_id)
+                return
+
+            if command_prefix.startswith("/subscribe") or command_prefix.startswith("/metrika_subscribe"):
+                self.metrika_telegram_subscribe(chat_id)
+                return
+
+            if command_prefix.startswith("/unsubscribe") or command_prefix.startswith("/metrika_unsubscribe"):
+                self.metrika_telegram_unsubscribe(chat_id)
                 return
 
             Telegram.unknown_command(chat_id)
@@ -268,3 +278,15 @@ class MetrikaModule:
             message = "Данные за текущий месяц."
 
         return message
+
+    def metrika_telegram_subscribe(self, chat_id):
+
+        scheduler.add_job(self.metrika_telegram_daily, args=['today', chat_id] , trigger='interval', days=1, id=str(chat_id))
+
+        return
+
+    def metrika_telegram_unsubscribe(self, chat_id):
+
+        scheduler.remove_job(str(chat_id))
+
+        return

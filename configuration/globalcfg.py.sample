@@ -1,3 +1,7 @@
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+scheduler = AsyncIOScheduler()
+scheduler.start()
 
 URL = '' # URL должен быть формата: "https://{...}/"
 BOT_NAME = '' # Название бота должно начинаться с @
