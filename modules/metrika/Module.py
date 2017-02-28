@@ -295,9 +295,6 @@ class MetrikaModule:
 
     def metrika_telegram_subscribe(self, chat_id):
 
-        if self.db.metrika_subscribes.find_one({'chat_id': chat_id}) and not scheduler.get_job(str(chat_id)):
-           self.metrika_telegram_inline_subscribe(self.db.metrika_subscribes.find_one({'chat_id': chat_id}).get('time'), chat_id)
-
         if scheduler.get_job(str(chat_id)):
             self.metrika_telegram_unsubscribe(chat_id)
             return
@@ -314,7 +311,8 @@ class MetrikaModule:
 
         scheduler.add_job(self.metrika_telegram_daily, args=['today', chat_id] , trigger='cron', hour=hour, id=str(chat_id))
 
-        self.db.metrika_subscribes.insert_one({'chat_id': chat_id, 'time': hour})
+        if not self.db.metrika_subscribes.find_one({'chat_id': chat_id}):
+            self.db.metrika_subscribes.insert_one({'chat_id': chat_id, 'time': hour})
 
         return
 
