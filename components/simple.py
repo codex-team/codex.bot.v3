@@ -40,8 +40,11 @@ def send_to_chat(message, chat_id, api_token=TELEGRAM_API_TOKEN, disable_web_pag
 
     query = 'https://api.telegram.org/bot%s/sendMessage?%s' % (api_token, urlencode(data))
     logging.info("message send to '{}': [{}]".format(chat_id, query))
+    result = requests.get(query)
+    if result.status_code != 200:
+        logging.debug(result.content)
 
-    return requests.get(query)
+    return result
 
 
 def send_image_to_chat(caption, image_filename, chat_id, api_token=TELEGRAM_API_TOKEN):
