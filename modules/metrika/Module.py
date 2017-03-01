@@ -110,12 +110,12 @@ class MetrikaModule:
                 hour = message['text'].split()[1]
                 self.metrika_telegram_inline_subscribe(hour, chat_id)
 
-                data = self.db.metrika_subscribtions.find_one({'chat_id': chat_id})
+                data = self.db.metrika_subscriptions.find_one({'chat_id': chat_id})
 
                 if not data:
-                    self.db.metrika_subscribtions.insert_one({'chat_id': chat_id, 'time': hour})
+                    self.db.metrika_subscriptions.insert_one({'chat_id': chat_id, 'time': hour})
                 elif data.get('time') != hour:
-                    self.db.metrika_subscribtions.find_and_modify(query={'chat_id': chat_id},
+                    self.db.metrika_subscriptions.find_and_modify(query={'chat_id': chat_id},
                                                                   update={"$set": {'time': hour}})
 
                 send_text('Вы успешно подписались на ежедневный дайджест в {}:00'.format(hour), chat_id)
@@ -325,7 +325,7 @@ class MetrikaModule:
         buttons = [[{'text': 'Выбрать другое время', 'callback_data': '/metrika_unsubscribe resubscribe'}],
                    [{'text': 'Отписаться', 'callback_data': '/metrika_unsubscribe'}]]
 
-        data = self.db.metrika_subscribtions.find_one({'chat_id': chat_id})
+        data = self.db.metrika_subscriptions.find_one({'chat_id': chat_id})
 
         if not data:
             send_text('Вы не подписаны на дайджест', chat_id)
@@ -345,6 +345,6 @@ class MetrikaModule:
         else:
             send_text('Вы не подписаны на дайджест', chat_id)
 
-        self.db.metrika_subscribtions.delete_one({'chat_id': chat_id})
+        self.db.metrika_subscriptions.delete_one({'chat_id': chat_id})
 
         return

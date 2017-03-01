@@ -32,15 +32,15 @@ class MetrikaHandler(CommonHandler):
         register_commands('metrika', ['help', 'start', 'stop', 'add_counter', 'del_counter', 'today', 'weekly', 'monthly', 'subscribe', 'unsubscribe'], global_commands)
 
     def init_scheduler(self):
-        subscribtions = list(self.mongo.metrika_subscribtions.find())
+        subscriptions = list(self.mongo.metrika_subscriptions.find())
 
         module = MetrikaModule(self.mongo,
                                MetrikaHandler.get_redis(DB_SETTINGS['REDIS_HOST'], DB_SETTINGS['REDIS_PORT'],
                                                         DB_SETTINGS['REDIS_PASSWORD']),
                                MetrikaHandler.settings)
 
-        for subscribtion in subscribtions:
-            module.metrika_telegram_inline_subscribe(subscribtion.get('time'), subscribtion.get('chat_id'))
+        for subscription in subscriptions:
+            module.metrika_telegram_inline_subscribe(subscription.get('time'), subscription.get('chat_id'))
 
     @staticmethod
     def get_description():
