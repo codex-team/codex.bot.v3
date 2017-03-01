@@ -12,7 +12,6 @@ from modules.metrika.MetrikaAPI import MetrikaAPI
 from .._common.functions import send_text, send_keyboard
 
 
-
 class MetrikaModule:
     def __init__(self, db, redis, settings):
         self.db = db
@@ -114,12 +113,11 @@ class MetrikaModule:
 
             if command_prefix.startswith("/unsubscribe") or command_prefix.startswith("/metrika_unsubscribe"):
                 command = message['text'].split()
-                self.metrika_telegram_inline_unsubscribe(chat_id)
 
                 if len(command) > 1:
-                    self.metrika_telegram_subscribe(chat_id)
+                    self.metrika_telegram_subscribe(chat_id, True)
                 else:
-                    send_text('Вы отписались от дайджеста', chat_id)
+                    self.metrika_telegram_inline_unsubscribe(chat_id)
 
         except Exception as e:
             logging.error("Error while Metrika process_inline_command: {}".format(e))
@@ -293,9 +291,9 @@ class MetrikaModule:
 
         return message
 
-    def metrika_telegram_subscribe(self, chat_id):
+    def metrika_telegram_subscribe(self, chat_id, resubscribe=False):
 
-        if scheduler.get_job(str(chat_id)):
+        if scheduler.get_job(str(chat_id)) and not resubscribe:
             self.metrika_telegram_unsubscribe(chat_id)
             return
 
@@ -309,10 +307,15 @@ class MetrikaModule:
 
     def metrika_telegram_inline_subscribe(self, hour, chat_id):
 
-        scheduler.add_job(self.metrika_telegram_daily, args=['today', chat_id] , trigger='cron', hour=hour, id=str(chat_id))
+        scheduler.add_job(self.metrika_telegram_daily, args=['today', chat_id] , trigger='cron', hour=hour, id=str(chat_id), replace_existing=True)
 
-        if not self.db.metrika_subscribes.find_one({'chat_id': chat_id}):
-            self.db.metrika_subscribes.insert_one({'chat_id': chat_id, 'time': hour})
+        data = self.db.metrika_subscribtions.find_one({'chat_id': chat_id})
+
+        if not data:
+            self.db.metrika_subscribtions.insert_one({'chat_id': chat_id, 'time': hour})
+        elif data.get('time') != hour:
+            self.db.metrika_subscribtions.find_and_modify(query={'chat_id': chat_id}, update={"$set": {'time': hour}})
+
 
         return
 
@@ -321,7 +324,7 @@ class MetrikaModule:
         buttons = [[{'text': 'Выбрать другое время', 'callback_data': '/metrika_unsubscribe resubscribe'}],
                    [{'text': 'Отписаться', 'callback_data': '/metrika_unsubscribe'}]]
 
-        data = self.db.metrika_subscribes.find_one({'chat_id': chat_id})
+        data = self.db.metrika_subscribtions.find_one({'chat_id': chat_id})
 
         if not data:
             send_text('Вы не подписаны на дайджест', chat_id)
@@ -335,7 +338,12 @@ class MetrikaModule:
 
     def metrika_telegram_inline_unsubscribe(self, chat_id):
 
-        scheduler.remove_job(str(chat_id))
-        self.db.metrika_subscribes.delete_one({'chat_id': chat_id})
+        if scheduler.get_job(str(chat_id)):
+           scheduler.remove_job(str(chat_id))
+           send_text('Вы отписались от дайджеста', chat_id)
+        else:
+            send_text('Вы не подписаны на дайджест', chat_id)
+
+        self.db.metrika_subscribtions.delete_one({'chat_id': chat_id})
 
         return
