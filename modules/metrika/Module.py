@@ -5,7 +5,8 @@ from datetime import timedelta
 
 import pytz as pytz
 
-from components.simple import generate_hash
+from configuration.globalcfg import scheduler
+from components.simple import generate_hash, create_buttons_list
 from core.telegram import Telegram
 from modules.metrika.MetrikaAPI import MetrikaAPI
 from .._common.functions import send_text, send_keyboard
@@ -22,11 +23,12 @@ class MetrikaModule:
         try:
             payload = params['data']['payload']
             self.chat_id = params['data'].get('chat_id', '')
+            command_prefix = params['data']['command_prefix']
 
             if not params['data']['inline']:
-                self.make_answer(payload)
+                self.make_answer(command_prefix, payload)
             else:
-                self.process_inline_command(payload)
+                self.process_inline_command(command_prefix, payload)
 
         except Exception as e:
             logging.error("Metrika module run_telegram error: {}".format(e))
@@ -48,32 +50,38 @@ class MetrikaModule:
         except Exception as e:
             logging.error("Metrika module run_web error: {}".format(e))
 
-    def make_answer(self, message):
+    def make_answer(self, command_prefix, message):
         try:
-            command_prefix = message['text'].split(' ')[0]
-
-            if command_prefix.startswith("/help") or command_prefix.startswith("/metrika_help"):
+            if command_prefix == "/help":
                 send_text(self.metrika_telegram_help(), self.chat_id)
                 return
 
-            if command_prefix.startswith("/start") or command_prefix.startswith("/metrika_start"):
+            if command_prefix == "/start":
                 self.metrika_telegram_start()
                 return
 
-            if command_prefix.startswith("/stop") or command_prefix.startswith("/metrika_stop"):
+            if command_prefix == "/stop":
                 self.metrika_telegram_stop()
                 return
 
-            if command_prefix.startswith("/today") or command_prefix.startswith("/metrika_today"):
+            if command_prefix == "/today":
                 self.metrika_telegram_daily("today")
                 return
 
-            if command_prefix.startswith("/weekly") or command_prefix.startswith("/metrika_weekly"):
+            if command_prefix == "/weekly":
                 self.metrika_telegram_daily("weekly")
                 return
 
-            if command_prefix.startswith("/monthly") or command_prefix.startswith("/metrika_monthly"):
+            if command_prefix == "/monthly":
                 self.metrika_telegram_daily("monthly")
+                return
+
+            if command_prefix == "/subscribe":
+                self.metrika_telegram_subscribe()
+                return
+
+            if command_prefix == "/unsubscribe":
+                self.metrika_telegram_unsubscribe()
                 return
 
             Telegram.unknown_command(self.chat_id)
@@ -81,21 +89,43 @@ class MetrikaModule:
         except Exception as e:
             logging.error("Error while Metrika make_answer: {}".format(e))
 
-    def process_inline_command(self, message):
+    def process_inline_command(self, command_prefix, message):
         try:
             command_prefix = message['text'].split(' ')[0]
 
-            if command_prefix.startswith("/add_counter") or command_prefix.startswith("/metrika_add_counter"):
+            if command_prefix == "/add_counter":
                 cache_id = message["text"].split("#")[-1]
                 cached_data = self.redis.hgetall(cache_id)
                 if cached_data:
                     self.metrika_telegram_add(cached_data)
 
-            if command_prefix.startswith("/del_counter") or command_prefix.startswith("/metrika_del_counter"):
+            if command_prefix == "/del_counter":
                 cache_id = message["text"].split("#")[-1]
                 cached_data = self.redis.hgetall(cache_id)
                 if cached_data:
                     self.metrika_telegram_del(cached_data)
+
+            if command_prefix == "/subscribe":
+                hour = message['text'].split()[1]
+                self.metrika_telegram_inline_subscribe(hour)
+
+                data = self.db.metrika_subscriptions.find_one({'chat_id': self.chat_id})
+
+                if not data:
+                    self.db.metrika_subscriptions.insert_one({'chat_id': self.chat_id, 'time': hour})
+                elif data.get('time') != hour:
+                    self.db.metrika_subscriptions.find_and_modify(query={'chat_id': self.chat_id},
+                                                                  update={"$set": {'time': hour}})
+
+                send_text('Вы успешно подписались на ежедневный дайджест в {}:00'.format(hour), self.chat_id)
+
+            if command_prefix == "/unsubscribe":
+                command = message['text'].split()
+
+                if len(command) > 1:
+                    self.metrika_telegram_subscribe(True)
+                else:
+                    self.metrika_telegram_inline_unsubscribe()
 
         except Exception as e:
             logging.error("Error while Metrika process_inline_command: {}".format(e))
@@ -268,3 +298,52 @@ class MetrikaModule:
             message = "Данные за текущий месяц."
 
         return message
+
+    def metrika_telegram_subscribe(self, chat_id, resubscribe=False):
+
+        if scheduler.get_job(str(chat_id)) and not resubscribe:
+            self.metrika_telegram_unsubscribe(chat_id)
+            return
+
+        hours = ['19', '20', '21', '22', '23', '00']
+
+        buttons = create_buttons_list(hours, lambda x: {'text': '{}:00'.format(x), 'callback_data': '/metrika_subscribe {}'.format(x)})
+
+        send_keyboard('Выберите время:', buttons, chat_id)
+
+        return
+
+    def metrika_telegram_inline_subscribe(self, hour, chat_id):
+
+        scheduler.add_job(self.metrika_telegram_daily, args=['today', chat_id] , trigger='cron', hour=hour, id=str(chat_id), replace_existing=True)
+
+        return
+
+    def metrika_telegram_unsubscribe(self, chat_id):
+
+        buttons = [[{'text': 'Выбрать другое время', 'callback_data': '/metrika_unsubscribe resubscribe'}],
+                   [{'text': 'Отписаться', 'callback_data': '/metrika_unsubscribe'}]]
+
+        data = self.db.metrika_subscriptions.find_one({'chat_id': chat_id})
+
+        if not data:
+            send_text('Вы не подписаны на дайджест', chat_id)
+            return
+
+        hour = data.get('time')
+
+        send_keyboard('Вы подписаны на ежедневный дайджест в {}:00'.format(hour), buttons, chat_id)
+
+        return
+
+    def metrika_telegram_inline_unsubscribe(self, chat_id):
+
+        if scheduler.get_job(str(chat_id)):
+           scheduler.remove_job(str(chat_id))
+           send_text('Вы отписались от дайджеста', chat_id)
+        else:
+            send_text('Вы не подписаны на дайджест', chat_id)
+
+        self.db.metrika_subscriptions.delete_one({'chat_id': chat_id})
+
+        return

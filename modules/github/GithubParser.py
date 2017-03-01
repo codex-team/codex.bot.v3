@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import html
 
 
 class GithubParser:
@@ -49,7 +50,7 @@ class GithubParser:
             modified = []
             removed = []
             for commit in commits:
-                template.append("* %s" % commit['message'].rstrip().replace('\r\n\r\n', '\n').replace('\n\n', '\n'))
+                template.append("* %s" % html.escape(commit['message'].rstrip().replace('\r\n\r\n', '\n').replace('\n\n', '\n')))
                 added.extend(commit["added"])
                 modified.extend(commit["modified"])
                 removed.extend(commit["removed"])
@@ -81,7 +82,7 @@ class GithubParser:
                     'https://github.com/' + repository_name,
                     repository_name
             ))
-            template.append("\n%s\n" % issue['body']) if len(issue['body']) else template.append("")
+            template.append("\n%s\n" % html.escape(issue['body'])) if len(issue['body']) else template.append("")
             template.append("%s\n" % issue['html_url'])
 
         if action == 'assigned':
@@ -127,7 +128,7 @@ class GithubParser:
                 )
             )
 
-            template.append("\n%s\n" % pull_request['body']) if len(pull_request['body']) else template.append("")
+            template.append("\n%s\n" % html.escape(pull_request['body'])) if len(pull_request['body']) else template.append("")
             template.append("%s\n" % pull_request['html_url'])
 
         return '\n'.join(template)
