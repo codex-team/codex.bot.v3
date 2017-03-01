@@ -34,7 +34,7 @@ class GithubModule:
                 gh = GithubParser(payload)
                 gh.process()
                 chat_id = self.get_chat_id_by_hash(chat_hash)
-                send_text(gh.get_output(), chat_id, parse_mode='HTML')
+                send_text(gh.get_output(), chat_id, parse_mode='Markdown')
                 return
 
             if params['type'] == 2:
