@@ -109,6 +109,15 @@ class MetrikaModule:
             if command_prefix.startswith("/subscribe") or command_prefix.startswith("/metrika_subscribe"):
                 hour = message['text'].split()[1]
                 self.metrika_telegram_inline_subscribe(hour, chat_id)
+
+                data = self.db.metrika_subscribtions.find_one({'chat_id': chat_id})
+
+                if not data:
+                    self.db.metrika_subscribtions.insert_one({'chat_id': chat_id, 'time': hour})
+                elif data.get('time') != hour:
+                    self.db.metrika_subscribtions.find_and_modify(query={'chat_id': chat_id},
+                                                                  update={"$set": {'time': hour}})
+
                 send_text('Вы успешно подписались на ежедневный дайджест в {}:00'.format(hour), chat_id)
 
             if command_prefix.startswith("/unsubscribe") or command_prefix.startswith("/metrika_unsubscribe"):
@@ -308,14 +317,6 @@ class MetrikaModule:
     def metrika_telegram_inline_subscribe(self, hour, chat_id):
 
         scheduler.add_job(self.metrika_telegram_daily, args=['today', chat_id] , trigger='cron', hour=hour, id=str(chat_id), replace_existing=True)
-
-        data = self.db.metrika_subscribtions.find_one({'chat_id': chat_id})
-
-        if not data:
-            self.db.metrika_subscribtions.insert_one({'chat_id': chat_id, 'time': hour})
-        elif data.get('time') != hour:
-            self.db.metrika_subscribtions.find_and_modify(query={'chat_id': chat_id}, update={"$set": {'time': hour}})
-
 
         return
 
