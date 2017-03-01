@@ -21,7 +21,6 @@ class MetrikaHandler(CommonHandler):
 
         self.init_scheduler()
 
-
         assert MetrikaHandler.settings['OAUTH_TOKEN']
 
     def set_routes(self):
