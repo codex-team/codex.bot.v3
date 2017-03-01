@@ -22,7 +22,7 @@ class MetrikaModule:
     def run_telegram(self, params):
         try:
             payload = params['data']['payload']
-            self.chat_id = params['data'].get('chat_id', '')
+            self.chat_id = params['data']['payload']['chat']['id']
             command_prefix = params['data']['command_prefix']
 
             if not params['data']['inline']:
@@ -36,6 +36,7 @@ class MetrikaModule:
     def run_web(self, params):
         try:
             access_token = params['data'].get("access_token", "")
+            self.chat_id = params['data'].get('chat_id', '')
             metrika_api = MetrikaAPI(access_token, '', self.chat_id)
 
             logging.debug("run_web with params: {}".format(access_token, self.chat_id))
@@ -91,8 +92,6 @@ class MetrikaModule:
 
     def process_inline_command(self, command_prefix, message):
         try:
-            command_prefix = message['text'].split(' ')[0]
-
             if command_prefix == "/add_counter":
                 cache_id = message["text"].split("#")[-1]
                 cached_data = self.redis.hgetall(cache_id)
