@@ -64,34 +64,33 @@ class GithubModule:
             inline = params['data']['inline']
 
             if inline:
-                if inline.startswith('/github_delete'):
+                if command_prefix == '/github_delete':
                     repository_id = inline.split(" ")[-1]
                     chat_id = payload['chat']['id']
                     self.github_delete_repository(repository_id, chat_id)
             else:
-                self.make_answer(payload)
+                self.make_answer(command_prefix, payload)
 
         except Exception as e:
             logging.error("Notifications module run_telegram error: {}".format(e))
 
-    def make_answer(self, message):
+    def make_answer(self, command_prefix, message):
         try:
-            command_prefix = message['text'].split(' ')[0]
             chat_id = message['chat']['id']
 
-            if command_prefix.startswith("/help") or command_prefix.startswith("/github_help"):
+            if command_prefix == "/help":
                 send_text(self.github_telegram_help(chat_id), chat_id)
                 return
 
-            if command_prefix.startswith("/start") or command_prefix.startswith("/github_start"):
+            if command_prefix == "/start":
                 self.github_telegram_start(chat_id)
                 return
 
-            if command_prefix.startswith("/stop") or command_prefix.startswith("/github_stop"):
+            if command_prefix == "/stop":
                 self.github_telegram_stop(chat_id)
                 return
 
-            if command_prefix.startswith("/auth") or command_prefix.startswith("/github_auth"):
+            if command_prefix == "/auth":
                 self.github_telegram_auth(message['from'], message['chat'])
                 return
 

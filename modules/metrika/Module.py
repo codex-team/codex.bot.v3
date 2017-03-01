@@ -21,10 +21,12 @@ class MetrikaModule:
     def run_telegram(self, params):
         try:
             payload = params['data']['payload']
+            command_prefix = params['data']['command_prefix']
+
             if not params['data']['inline']:
-                self.make_answer(payload)
+                self.make_answer(command_prefix, payload)
             else:
-                self.process_inline_command(payload)
+                self.process_inline_command(command_prefix, payload)
 
         except Exception as e:
             logging.error("Metrika module run_telegram error: {}".format(e))
@@ -47,40 +49,39 @@ class MetrikaModule:
         except Exception as e:
             logging.error("Metrika module run_web error: {}".format(e))
 
-    def make_answer(self, message):
+    def make_answer(self, command_prefix, message):
         try:
-            command_prefix = message['text'].split(' ')[0]
             chat_id = message['chat']['id']
 
-            if command_prefix.startswith("/help") or command_prefix.startswith("/metrika_help"):
+            if command_prefix == "/help":
                 send_text(self.metrika_telegram_help(chat_id), chat_id)
                 return
 
-            if command_prefix.startswith("/start") or command_prefix.startswith("/metrika_start"):
+            if command_prefix == "/start":
                 self.metrika_telegram_start(chat_id)
                 return
 
-            if command_prefix.startswith("/stop") or command_prefix.startswith("/metrika_stop"):
+            if command_prefix == "/stop":
                 self.metrika_telegram_stop(chat_id)
                 return
 
-            if command_prefix.startswith("/today") or command_prefix.startswith("/metrika_today"):
+            if command_prefix == "/today":
                 self.metrika_telegram_daily("today", chat_id)
                 return
 
-            if command_prefix.startswith("/weekly") or command_prefix.startswith("/metrika_weekly"):
+            if command_prefix == "/weekly":
                 self.metrika_telegram_daily("weekly", chat_id)
                 return
 
-            if command_prefix.startswith("/monthly") or command_prefix.startswith("/metrika_monthly"):
+            if command_prefix == "/monthly":
                 self.metrika_telegram_daily("monthly", chat_id)
                 return
 
-            if command_prefix.startswith("/subscribe") or command_prefix.startswith("/metrika_subscribe"):
+            if command_prefix == "/subscribe":
                 self.metrika_telegram_subscribe(chat_id)
                 return
 
-            if command_prefix.startswith("/unsubscribe") or command_prefix.startswith("/metrika_unsubscribe"):
+            if command_prefix == "/unsubscribe":
                 self.metrika_telegram_unsubscribe(chat_id)
                 return
 
@@ -89,24 +90,23 @@ class MetrikaModule:
         except Exception as e:
             logging.error("Error while Metrika make_answer: {}".format(e))
 
-    def process_inline_command(self, message):
+    def process_inline_command(self, command_prefix, message):
         try:
-            command_prefix = message['text'].split(' ')[0]
             chat_id = message['chat']['id']
 
-            if command_prefix.startswith("/add_counter") or command_prefix.startswith("/metrika_add_counter"):
+            if command_prefix == "/add_counter":
                 cache_id = message["text"].split("#")[-1]
                 cached_data = self.redis.hgetall(cache_id)
                 if cached_data:
                     self.metrika_telegram_add(chat_id, cached_data)
 
-            if command_prefix.startswith("/del_counter") or command_prefix.startswith("/metrika_del_counter"):
+            if command_prefix == "/del_counter":
                 cache_id = message["text"].split("#")[-1]
                 cached_data = self.redis.hgetall(cache_id)
                 if cached_data:
                     self.metrika_telegram_del(chat_id, cached_data)
 
-            if command_prefix.startswith("/subscribe") or command_prefix.startswith("/metrika_subscribe"):
+            if command_prefix == "/subscribe":
                 hour = message['text'].split()[1]
                 self.metrika_telegram_inline_subscribe(hour, chat_id)
 
@@ -120,7 +120,7 @@ class MetrikaModule:
 
                 send_text('Вы успешно подписались на ежедневный дайджест в {}:00'.format(hour), chat_id)
 
-            if command_prefix.startswith("/unsubscribe") or command_prefix.startswith("/metrika_unsubscribe"):
+            if command_prefix == "/unsubscribe":
                 command = message['text'].split()
 
                 if len(command) > 1:
