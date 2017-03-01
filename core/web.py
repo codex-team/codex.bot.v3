@@ -64,7 +64,7 @@ async def telegram_callback(request):
                                  "url": request.rel_url.path,
                                  "type": 0,  # Telegram message
                                  "data": {
-                                     "command_prefix": command_prefix,
+                                     "command_prefix": command_prefix.replace(module+'_', '', 1),
                                      "payload": message,
                                      "inline": inline
                                  },

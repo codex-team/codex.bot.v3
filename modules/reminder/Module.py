@@ -13,50 +13,49 @@ class ReminderModule:
 
     async def run_telegram(self, params):
         try:
+            command_prefix = params['data']['command_prefix']
             payload = params['data']['payload']
             if not params['data']['inline']:
-                await self.make_answer(payload)
+                await self.make_answer(command_prefix, payload)
             else:
-                self.process_inline_command(payload)
+                self.process_inline_command(command_prefix, payload)
 
         except Exception as e:
             logging.error("Metrika module run_telegram error: {}".format(e))
 
-    def process_inline_command(self, message):
+    def process_inline_command(self, command_prefix, message):
         try:
-            command_prefix = message['text'].split(' ')[0]
             chat_id = message['chat']['id']
 
-            if command_prefix.startswith("/reminder_del") or command_prefix.startswith("/reminder_reminder_del"):
+            if command_prefix == "/reminder_del":
                 cache_id = message["text"].split("#")[-1]
                 self.remove_note_by_id(cache_id, chat_id)
 
         except Exception as e:
             logging.error("Error while Metrika process_inline_command: {}".format(e))
 
-    async def make_answer(self, message):
+    async def make_answer(self, command_prefix, message):
         try:
-            command_prefix = message['text'].split(' ')[0]
             chat_id = message['chat']['id']
 
-            if command_prefix.startswith("/help") or command_prefix.startswith("/reminder_help"):
+            if command_prefix == "/help":
                 return send_text("Hello. This module can remind you about everything.\nJust press /remind <text>", chat_id)
 
-            if command_prefix.startswith("/start") or command_prefix.startswith("/reminder_start"):
+            if command_prefix == "/start":
                 return send_text("Just press /remind <text>", chat_id)
 
             if command_prefix == "/remind":
                 return await self.reminder_telegram_remind(message, chat_id)
 
-            if command_prefix.startswith("/noteadd"):
+            if command_prefix == "/noteadd":
                 self.add_note(message, chat_id)
                 return
 
-            if command_prefix.startswith("/notedel"):
+            if command_prefix == "/notedel":
                 self.remove_note(message, chat_id)
                 return
 
-            if command_prefix.startswith("/notes"):
+            if command_prefix == "/notes":
                 self.show_notes(chat_id)
                 return
 
