@@ -20,8 +20,9 @@ class NotificationsModule:
 
     async def run_telegram(self, params):
         try:
+            command_prefix = params['data']['command_prefix']
             payload = params['data']['payload']
-            self.make_answer(payload)
+            self.make_answer(command_prefix, payload)
         except Exception as e:
             logging.error("Notifications module run_telegram error: {}".format(e))
 
@@ -47,16 +48,15 @@ class NotificationsModule:
         else:
             logging.warning("Message not sent. Hash = {}".format(chat_hash))
 
-    def make_answer(self, message):
+    def make_answer(self, command_prefix, message):
         try:
-            command_prefix = message['text'].split(' ')[0]
             chat_id = message['chat']['id']
 
-            if command_prefix.startswith("/help") or command_prefix.startswith("/notifications_help"):
+            if command_prefix == "/help":
                 send_text("/notifications_start - получить ссылку для передачи сообщений в данный чат.", chat_id)
                 return
 
-            if command_prefix.startswith("/start") or command_prefix.startswith("/notifications_start"):
+            if command_prefix == "/start":
                 token = self.get_chat_token(chat_id)
                 message = "Ссылка для отправки сообщений в данный чат: {}notifications/{}\n\n" + \
                           "Сообщение отправляйте в POST параметре message."
