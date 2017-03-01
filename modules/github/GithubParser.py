@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import html
 
 
 class GithubParser:
@@ -49,7 +50,7 @@ class GithubParser:
             modified = []
             removed = []
             for commit in commits:
-                template.append("* %s" % commit['message'].rstrip().replace('\r\n\r\n', '\n').replace('\n\n', '\n'))
+                template.append("* %s" % html.escape(commit['message'].rstrip().replace('\r\n\r\n', '\n').replace('\n\n', '\n')))
                 added.extend(commit["added"])
                 modified.extend(commit["modified"])
                 removed.extend(commit["removed"])
@@ -72,22 +73,22 @@ class GithubParser:
         repository_name = self.data['repository']['full_name']
 
         if action == "opened" or action == "closed":
-            template.append("{} {} {} {}issue «```{}```» [{}]({})]".format(
+            template.append("{} {} {} {}issue «<code>{}</code>» [<a href=\"{}\">{}</a>]".format(
                     "👉" if action == "opened" else "✅",
                     author,
                     action,
                     "new " if action == "opened" else "",
                     issue['title'],
-                    repository_name,
                     'https://github.com/' + repository_name,
+                    repository_name
             ))
-            template.append("\n%s\n" % issue['body']) if len(issue['body']) else template.append("")
+            template.append("\n%s\n" % html.escape(issue['body'])) if len(issue['body']) else template.append("")
             template.append("%s\n" % issue['html_url'])
 
         if action == 'assigned':
             assignee = self.data['assignee']['login']
 
-            template.append('📌 {assignee} has been assigned to the issue «```{issue_title}```» by {author} [{repository_name}]'.format(
+            template.append('📌 {assignee} has been assigned to the issue «<code>{issue_title}</code>» by {author} [{repository_name}]'.format(
                 author=author,
                 assignee=assignee,
                 issue_title=issue['title'],
@@ -115,19 +116,19 @@ class GithubParser:
 
         if action == "opened" or action == "closed":
             template.append(
-                "😼 {} {} {}pull request «```{}```» from *{}* to *{}* [[{}]({})]".format(
+                "😼 {} {} {}pull request <code>«{}»</code> from <b>{}</b> to <b>{}</b> [<a href=\"{}\">{}</a>]".format(
                     author,
                     action,
                     "new " if action == "opened" else "",
                     pull_request['title'],
                     pull_request['head']['ref'],
                     pull_request['base']['ref'],
-                    repository_name,
-                    'https://github.com/' + repository_name
+                    'https://github.com/' + repository_name,
+                    repository_name
                 )
             )
 
-            template.append("\n%s\n" % pull_request['body']) if len(pull_request['body']) else template.append("")
+            template.append("\n%s\n" % html.escape(pull_request['body'])) if len(pull_request['body']) else template.append("")
             template.append("%s\n" % pull_request['html_url'])
 
         return '\n'.join(template)
