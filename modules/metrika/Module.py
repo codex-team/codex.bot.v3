@@ -161,7 +161,7 @@ class MetrikaModule:
                    )
             send_text(msg, self.chat_id)
         else:
-            buttons = self.get_counters(metrikas[0], "start")
+            buttons = self.get_counters(metrikas[-1], "start")
             if not len(buttons):
                 send_text("У вас нет доступных счетчиков Яндекс Метрики.", self.chat_id)
             else:
