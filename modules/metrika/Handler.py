@@ -16,6 +16,10 @@ class MetrikaHandler(CommonHandler):
 
     def __init__(self, web_app):
         super().__init__(web_app)
+        self.mongo = MetrikaHandler.get_mongo(DB_SETTINGS['MONGO_HOST'], DB_SETTINGS['MONGO_PORT'],
+                               DB_SETTINGS['MONGO_DB_NAME'])
+
+        self.init_scheduler()
 
         assert MetrikaHandler.settings['OAUTH_TOKEN']
 
@@ -24,7 +28,18 @@ class MetrikaHandler(CommonHandler):
         self.WEB_APP.router.add_get('/metrika/callback', self.metrika_yandex_callback)
 
     def register_commands(self, global_commands):
-        register_commands('metrika', ['help', 'start', 'stop', 'add_counter', 'del_counter', 'today', 'weekly', 'monthly'], global_commands)
+        register_commands('metrika', ['help', 'start', 'stop', 'add_counter', 'del_counter', 'today', 'weekly', 'monthly', 'subscribe', 'unsubscribe'], global_commands)
+
+    def init_scheduler(self):
+        subscriptions = list(self.mongo.metrika_subscriptions.find())
+
+        module = MetrikaModule(self.mongo,
+                               MetrikaHandler.get_redis(DB_SETTINGS['REDIS_HOST'], DB_SETTINGS['REDIS_PORT'],
+                                                        DB_SETTINGS['REDIS_PASSWORD']),
+                               MetrikaHandler.settings)
+
+        for subscription in subscriptions:
+            module.metrika_telegram_inline_subscribe(subscription.get('time'), subscription.get('chat_id'))
 
     @staticmethod
     def get_description():
