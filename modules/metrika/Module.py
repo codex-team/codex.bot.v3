@@ -55,11 +55,11 @@ class MetrikaModule:
 
     def make_answer(self, command_prefix, message):
         try:
-            if command_prefix == "/help" or command_prefix == "/metrika":
+            if command_prefix == "/help":
                 send_text(self.metrika_telegram_help(), self.chat_id)
                 return
 
-            if command_prefix == "/settings":
+            if command_prefix == "/settings" or command_prefix == "/metrika":
                 self.metrika_telegram_settings()
                 return
 
@@ -187,13 +187,11 @@ class MetrikaModule:
               "- моментальное получение текущих значений счетчиков (DAU, просмотры, источники) за период (день, неделя, месяц)\n" \
               "- уведомление о достижении целей (например, бот сообщит о достижении показателя в 10k уникальных посетителей)\n\n"
 
-        msg += "/metrika_settings - список возможных действий\n" \
-               "/metrika_add - добавление нового пользователя\n" \
-               "/metrika_availbale - добавление доступных счетчиков\n" \
-               "/metrika_counters - список подключенных счетчиков\n" \
+        msg += "/metrika_settings - перечень команд\n" \
+               "/metrika_add - добавление нового пользователя Яндекс.Метрика\n" \
+               "/metrika_subscriptions - настройка ежедневных отчётов\n" \
                "/metrika_stop - отключение счетчиков\n" \
-               "/metrika_subscribe - подписка на ежедневный дайджест\n" \
-               "/metrika_unsibscribe - отписаться от дайджеста\n" \
+               "/metrika_counters - список подключенных счётчиков\n" \
                "/metrika_access - отключение пользователей от чата"
 
         return msg

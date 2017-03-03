@@ -50,7 +50,7 @@ class MetrikaHandler(CommonHandler):
 
     @staticmethod
     def get_description():
-        return '/metrika — Модуль Яндекс.Метрики. Умеет присылать статистику за день и неделю.'
+        return '/metrika — Модуль Яндекс.Метрики. Умеет присылать статистику посещений сайтов.'
 
     async def run_telegram(self, params):
         module = MetrikaModule(MetrikaHandler.get_mongo(DB_SETTINGS['MONGO_HOST'], DB_SETTINGS['MONGO_PORT'],
