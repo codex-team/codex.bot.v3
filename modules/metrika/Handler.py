@@ -28,7 +28,14 @@ class MetrikaHandler(CommonHandler):
         self.WEB_APP.router.add_get('/metrika/callback', self.metrika_yandex_callback)
 
     def register_commands(self, global_commands):
-        register_commands('metrika', ['help', 'start', 'stop', 'add_counter', 'del_counter', 'today', 'weekly', 'monthly', 'subscribe', 'unsubscribe'], global_commands)
+        register_commands('metrika', ['help', 'start', 'stop',
+                                      'add_counter', 'del_counter',
+                                      'today', 'weekly', 'monthly',
+                                      'subscribe', 'unsubscribe',
+                                      'add', 'available', 'counters',
+                                      'settings', 'subscriptions',
+                                      'access', 'logout', 'metrika'],
+                                        global_commands)
 
     def init_scheduler(self):
         subscriptions = list(self.mongo.metrika_subscriptions.find())
