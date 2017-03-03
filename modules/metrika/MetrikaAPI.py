@@ -36,19 +36,18 @@ class MetrikaAPI(object):
 
     def get_counter_name(self):
         params = urlencode(self.get_params())
-        message = ""
 
         try:
-            result_json = requests.get(self.URL + 'counter/%s/' % self.COUNTER_ID,
+            result_json = requests.get(self.URL + 'counter/{}'.format(self.COUNTER_ID),
                                        params=params,
                                        headers=self.HEADERS,
                                        timeout=5).json()
-
-            message = "%s (%s)" % (result_json['counter']['name'], result_json['counter']['site'])
+            logging.debug(result_json)
+            message = "{} ({})".format(result_json['counter']['name'], result_json['counter']['site'])
 
         except Exception as e:
             print("There was an error: %r" % e)
-            return "There was an error: %r" % e
+            return Exception
 
         return message
 
@@ -70,6 +69,24 @@ class MetrikaAPI(object):
             return []
 
         return counters
+
+    @staticmethod
+    def get_login(token):
+        params = {'oauth_token': token}
+
+        try:
+            result_json = requests.get('https://login.yandex.ru/info',
+                                       params=params,
+                                       headers={'Accept': 'application/x-yametrika+json'},
+                                       timeout=5).json()
+
+            login = result_json['login']
+
+        except Exception as e:
+            print("There was an error: %r" % e)
+            return ''
+
+        return login
 
     @staticmethod
     def get_greeting():
