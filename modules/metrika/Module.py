@@ -38,15 +38,17 @@ class MetrikaModule:
             access_token = params['data'].get("access_token", "")
             self.chat_id = params['data'].get('chat_id', '')
             metrika_api = MetrikaAPI(access_token, '', self.chat_id)
+            login = metrika_api.get_login(access_token)
 
-            logging.debug("run_web with params: {}".format(access_token, self.chat_id))
+            logging.debug("run_web with params: {} {}".format(access_token, self.chat_id))
 
-            if not self.db.metrika_tokens.find_one({'access_token': access_token}):
+            if not self.db.metrika_tokens.find_one({'access_token': access_token, 'chat_id': self.chat_id}):
                 self.db.metrika_tokens.insert_one({'id': generate_hash(12),
                                                    'chat_id': self.chat_id,
-                                                   'access_token': access_token})
+                                                   'access_token': access_token,
+                                                   'login': login})
 
-            self.metrika_telegram_start()
+            self.metrika_telegram_available()
 
         except Exception as e:
             logging.error("Metrika module run_web error: {}".format(e))
@@ -57,8 +59,24 @@ class MetrikaModule:
                 send_text(self.metrika_telegram_help(), self.chat_id)
                 return
 
-            if command_prefix == "/start":
+            if command_prefix == "/settings" or command_prefix == "/metrika":
+                self.metrika_telegram_settings()
+                return
+
+            if command_prefix == "/start" or command_prefix == "/add":
                 self.metrika_telegram_start()
+                return
+
+            if command_prefix == "/available":
+                self.metrika_telegram_available()
+                return
+
+            if command_prefix == "/counters":
+                self.metrika_telegram_counters()
+                return
+
+            if command_prefix == "/access":
+                self.metrika_telegram_access()
                 return
 
             if command_prefix == "/stop":
@@ -92,17 +110,50 @@ class MetrikaModule:
 
     def process_inline_command(self, command_prefix, message):
         try:
+
+            if command_prefix == "/help":
+                send_text(self.metrika_telegram_help(), self.chat_id)
+                return
+
+            if command_prefix == "/start":
+                self.metrika_telegram_start()
+                return
+
+            if command_prefix == "/available":
+                self.metrika_telegram_available()
+                return
+
+            if command_prefix == "/counters":
+                self.metrika_telegram_counters()
+                return
+
+            if command_prefix == "/stop":
+                self.metrika_telegram_stop()
+                return
+
+            if command_prefix == "/subscriptions":
+                self.metrika_telegram_subscribe()
+                return
+
+            if command_prefix == "/access":
+                self.metrika_telegram_access()
+                return
+
+            if command_prefix == "/logout":
+                login = message['text'].split(' ')[1]
+                self.metrika_telegram_logout(login)
+                return
+
             if command_prefix == "/add_counter":
-                cache_id = message["text"].split("#")[-1]
-                cached_data = self.redis.hgetall(cache_id)
-                if cached_data:
-                    self.metrika_telegram_add(cached_data)
+
+                data = message['text'].split(' ')
+                logging.debug(data)
+
+                self.metrika_telegram_add(data[1], data[2])
 
             if command_prefix == "/del_counter":
-                cache_id = message["text"].split("#")[-1]
-                cached_data = self.redis.hgetall(cache_id)
-                if cached_data:
-                    self.metrika_telegram_del(cached_data)
+                data = message['text'].split(' ')
+                self.metrika_telegram_del(data[1])
 
             if command_prefix == "/subscribe":
                 hour = message['text'].split()[1]
@@ -134,84 +185,219 @@ class MetrikaModule:
     def metrika_telegram_help(self):
         msg = "Этот модуль поможет вам следить за статистикой сайта. Возможности модуля: \n\n" \
               "- моментальное получение текущих значений счетчиков (DAU, просмотры, источники) за период (день, неделя, месяц)\n" \
-              "- уведомление о достижении целей (например, бот сообщит о достижении показателя в 10k уникальных посетителей)"
+              "- уведомление о достижении целей (например, бот сообщит о достижении показателя в 10k уникальных посетителей)\n\n"
 
-        metrikas = list(self.db.metrika_counters.find({'chat_id': self.chat_id}))
-        if not len(metrikas):
-            msg += "\n\nВ данный момент модуль не активирован.\n\nДля настройки модуля, используйте команду /metrika_start"
-        else:
-            msg += "\n\nПодключенные сайты.\n\n"
-            for metrika in metrikas:
-                msg += "%s\n" % metrika['counter_name']
-            msg += "\nДля отключения счетчика используйте команду /metrika_stop\n" \
-                   "Подключить еще один сайт можно с помощью команды /metrika_start\n\n" \
-                   "Меню модуля: /metrika_help"
+        msg += "/metrika_settings - перечень команд\n" \
+               "/metrika_add - добавление нового пользователя Яндекс.Метрика\n" \
+               "/metrika_subscriptions - настройка ежедневных отчётов\n" \
+               "/metrika_stop - отключение счетчиков\n" \
+               "/metrika_counters - список подключенных счётчиков\n" \
+               "/metrika_access - отключение пользователей от чата"
+
         return msg
 
     def metrika_telegram_start(self):
-        msg = ""
 
-        metrikas = list(self.db.metrika_tokens.find({'chat_id': self.chat_id}))
-        if not len(metrikas):
-            msg += "Для подключения счетчика, вам нужно авторизовать бота. " \
-                   "Для этого, пройдите по ссылке и подтвердите доступ к счетчику. \n\n" \
-                   "https://oauth.yandex.ru/authorize?response_type=code&client_id={}&state={}\n".format(
-                        self.settings['ID'],
-                        self.chat_id
-                   )
-            send_text(msg, self.chat_id)
+        msg = "Для подключения счетчика, вам нужно авторизовать бота. Для этого перейдите по ссылке и подтвердите доступ:"
+
+        button = [[{
+            'text': 'Авторизовать бота',
+            'url':  "https://oauth.yandex.ru/authorize?response_type=code&client_id={}&state={}".format(
+                    self.settings['ID'],
+                    self.chat_id
+               )
+        }]]
+        send_keyboard(msg, button, self.chat_id)
+
+    def metrika_telegram_settings(self):
+        buttons = [[{
+                'text': 'Добавить пользователя',
+                'callback_data': '/metrika_start'
+            }],
+            [{
+                'text': 'Добавить счетчик',
+                'callback_data': '/metrika_available'
+            }],
+            [{
+                'text': 'Регулярные отчеты',
+                'callback_data': '/metrika_subscriptions'
+            }],
+            [{
+                'text': 'Удалить счетчик',
+                'callback_data': '/metrika_stop'
+            }],
+            [{
+                'text': 'Подключенные счетчики',
+                'callback_data': '/metrika_counters'
+            }],
+            [{
+                'text': 'Управление доступом',
+                'callback_data': '/metrika_access'
+            }],
+            [{
+                'text': 'Помощь',
+                'callback_data': '/metrika_help'
+            }]]
+
+        send_keyboard('Действия:', buttons, self.chat_id)
+
+    def metrika_telegram_available(self):
+
+        tokens = list(self.db.metrika_tokens.find({'chat_id': str(self.chat_id)}))
+
+        users = []
+
+        for token in tokens:
+            users.append({'counters': self.get_counters(token, "start"),
+                          'login': MetrikaAPI.get_login(token['access_token'])})
+
+        buttons = []
+
+        for user in users:
+
+            for counter in user['counters']:
+                if not self.db.metrika_counters.find_one({'chat_id': self.chat_id,
+                                                          'counter_id': counter['id']}):
+                    buttons.append([{
+                        'text': counter['name'],
+                        'callback_data': '/metrika_add_counter {} {}'.format(counter['id'], user['login'])
+                    }])
+
+        if len(buttons) == 0:
+            send_text('Доступных для подключения счетчиков не осталось', self.chat_id)
         else:
-            buttons = self.get_counters(metrikas[-1], "start")
-            if not len(buttons):
-                send_text("У вас нет доступных счетчиков Яндекс Метрики.", self.chat_id)
+            send_keyboard('Выберите счетчик для подключения', buttons, self.chat_id)
+
+    def metrika_telegram_counters(self):
+
+        counters = list(self.get_chat_counters())
+
+        if not len(counters):
+            send_text('Подключенных счетчиков нет.\n\nЧтобы подключить доступные счетчики, используйте /metrika_available', self.chat_id)
+            return
+
+        users = {}
+        for counter in counters:
+            login = counter.get('login')
+            counter_name = counter.get('counter_name')
+            if login in users:
+                users[login].append(counter_name)
             else:
-                send_keyboard("Теперь выберите сайт, статистику которого хотите получать.\n",
-                          buttons,
-                          self.chat_id)
+                users[login] = [counter_name]
+
+        message = 'Подключенные счетчики:\n\n'
+        for login in users.keys():
+            message += '<b>@{}</b>\n'.format(login)
+            for counter in users[login]:
+                message += '{}\n'.format(counter)
+            message += '\n'
+
+        message += '\nЧтобы удалить счетчик, используйте команду /metrika_stop\n\n'+\
+                   'Чтобы отключить все счетчики пользователя, используйте /metrika_access'
+        send_text(message, self.chat_id, 'HTML')
+
 
     def metrika_telegram_stop(self):
         msg = ""
 
-        metrikas = list(self.db.metrika_counters.find({'chat_id': self.chat_id}))
-        if not len(metrikas):
+        counters = list(self.get_chat_counters())
+        if not len(counters):
             send_text("Подключенных счетчиков не найдено.", self.chat_id)
-        else:
-            send_keyboard("Выберите сайт, который хотите отключить.\n",
-                          self.get_chat_counters(metrikas),
-                          self.chat_id)
+            return
 
-    def metrika_telegram_add(self, params):
-        counter = self.db.metrika_counters.find_one({'chat_id': self.chat_id, 'counter_id': params['counter_id']})
+        buttons = []
+        for counter in counters:
+            buttons.append([{
+                'text': counter['counter_name'],
+                'callback_data': '/metrika_del_counter {}'.format(counter['counter_id'])
+            }])
+
+
+        send_keyboard("Выберите счетчик, который хотите отключить.\n",
+                      buttons,
+                      self.chat_id)
+
+    def metrika_telegram_access(self):
+        users = list(self.db.metrika_tokens.find({'chat_id': str(self.chat_id)}))
+
+        if not len(users):
+            send_text('Не авторизовано ни одного пользователя\n\nИспользуйте /metrika_add для авторизации', self.chat_id)
+            return
+
+        buttons = []
+        for user in users:
+            buttons.append([{
+                'text': '@{}'.format(user['login']),
+                'callback_data': '/metrika_logout {}'.format(user['login'])
+            }])
+
+
+
+        send_keyboard('Выберите пользователя, которого хотите отключить:', buttons, self.chat_id)
+
+    def metrika_telegram_logout(self, login):
+        self.db.metrika_tokens.delete_one({'chat_id': str(self.chat_id), 'login': login})
+        self.db.metrika_counters.delete_many({'chat_id': self.chat_id, 'login': login})
+
+        send_text('Пользователь <b>@{}</b> и его счетчики успешно отключены'.format(login), self.chat_id, 'HTML')
+
+    def metrika_telegram_add(self, counter_id, login):
+
+        counter = self.db.metrika_counters.find_one({'chat_id': self.chat_id, 'counter_id': counter_id})
         if counter:
-            send_text("Счетчик <{}> уже прикреплен к данному чату.".format(params['name']), self.chat_id)
-        else:
-            self.db.metrika_counters.insert_one({
-                'chat_id': self.chat_id,
-                'counter_id': params['counter_id'],
-                'counter_name': params['name'],
-                'access_token': params['access_token']
-            })
-            send_text("Готово! Сайт <{}> успешно подключен.".format(params['name']), self.chat_id)
-            self.metrika_telegram_help()
+            send_text("Счетчик <b>{}</b> уже прикреплен к данному чату.".format(counter['counter_name']), self.chat_id, 'HTML')
+            return
 
-    def metrika_telegram_del(self, params):
-        result = self.db.metrika_counters.delete_one({'chat_id': self.chat_id, 'counter_id': params['counter_id']})
-        if result.deleted_count:
-            send_text("Счетчик <{}> успешно откреплен от данного чата.".format(params['name']), self.chat_id)
-        else:
-            send_text("Счетчик <{}> к данному чату не подключен.".format(params['name']), self.chat_id)
+        token = self.db.metrika_tokens.find_one({'chat_id': str(self.chat_id), 'login': login})
+
+        try:
+            api = MetrikaAPI(token['access_token'], counter_id, self.chat_id)
+            counter_name = api.get_counter_name()
+
+        except Exception as e:
+            send_text('Не могу получить данные о счетчике :(', self.chat_id)
+            return
+
+        self.db.metrika_counters.insert_one({
+            'chat_id': self.chat_id,
+            'counter_id': counter_id,
+            'counter_name': counter_name,
+            'login': login
+        })
+
+        send_text("Готово! Счетчик <b>{}</b> успешно подключен.".format(counter_name), self.chat_id, 'HTML')
+        self.metrika_telegram_help()
+
+    def metrika_telegram_del(self, counter_id):
+        counter = self.db.metrika_counters.find_one({'chat_id': self.chat_id, 'counter_id': counter_id})
+        result = self.db.metrika_counters.delete_one({'chat_id': self.chat_id, 'counter_id': counter_id})
+
+        send_text("Счетчик <b>{}</b> успешно откреплен от данного чата.".format(counter.get('counter_name')), self.chat_id, 'HTML')
 
     def metrika_telegram_daily(self, cmd):
-        metrikas = list(self.db.metrika_counters.find({'chat_id': self.chat_id}))
+        tokens = list(self.db.metrika_tokens.find({'chat_id': str(self.chat_id)}))
         message = "%s\n\n" % self.stats(cmd)
-        for metrika in metrikas:
+
+        if not len(tokens):
+            message = 'Не авторизован ни один пользователь\n\nДля авторизации используйте /metrika_add'
+
+        for token in tokens:
             try:
-                metrikaAPI = MetrikaAPI(metrika['access_token'], metrika['counter_id'], self.chat_id)
-                result = metrikaAPI.get_visit_statistics(cmd)
-                if result:
-                    users, hits = result
-                    message += "%s:\n%d уникальных посетителей\n%d просмотров\n\n" % (metrika['counter_name'],
+                counters = list(self.db.metrika_counters.find({'chat_id': self.chat_id, 'login': token['login']}))
+
+                if not len(counters):
+                    message = 'Не подключен ни один счетчик\n\nДля подключения доступных счетчиков используйте /metrika_available.'
+
+
+                for counter in counters:
+                    metrikaAPI = MetrikaAPI(token['access_token'], counter['counter_id'], self.chat_id)
+                    result = metrikaAPI.get_visit_statistics(cmd)
+                    if result:
+                        print(result)
+                        users, hits = result
+                        message += "%s:\n%d уникальных посетителей\n%d просмотров\n\n" % (counter['counter_name'],
                                                                                       users, hits)
+
             except Exception as e:
                 logging.warning("Metrika API exception: %s" % e)
 
@@ -219,9 +405,11 @@ class MetrikaModule:
 
     ### SUPPORT ###
 
-    def get_counters(self, token, cmd):
+    def get_counters(self, token, cmd=None):
         metrikaAPI = MetrikaAPI(token['access_token'], '', token['chat_id'])
-        counters = metrikaAPI.get_counters()
+        return metrikaAPI.get_counters()
+
+        '''
         buttons = []
         buttons_row = []
         for counter in counters:
@@ -242,9 +430,16 @@ class MetrikaModule:
                 buttons_row = []
         if len(buttons_row):
             buttons.append(buttons_row[:])
+        '''
         return buttons
 
-    def get_chat_counters(self, metrikas):
+    def get_chat_counters(self):
+
+        counters = self.db.metrika_counters.find({'chat_id': self.chat_id})
+
+        return counters
+
+        """
         buttons = []
         buttons_row = []
         for counter in metrikas:
@@ -264,7 +459,7 @@ class MetrikaModule:
         if len(buttons_row):
             buttons.append(buttons_row[:])
         return buttons
-
+        """
     def stats(self, period="today"):
         def month(n):
             d = {1: "января", 2: "февраля", 3: "марта", 4: "апреля", 5: "мая", 6: "июня",
@@ -298,51 +493,54 @@ class MetrikaModule:
 
         return message
 
-    def metrika_telegram_subscribe(self, chat_id, resubscribe=False):
+    def metrika_telegram_subscribe(self, resubscribe=False):
 
-        if scheduler.get_job(str(chat_id)) and not resubscribe:
-            self.metrika_telegram_unsubscribe(chat_id)
+        if scheduler.get_job(str(self.chat_id)) and not resubscribe:
+            self.metrika_telegram_unsubscribe(self.chat_id)
             return
 
         hours = ['19', '20', '21', '22', '23', '00']
 
         buttons = create_buttons_list(hours, lambda x: {'text': '{}:00'.format(x), 'callback_data': '/metrika_subscribe {}'.format(x)})
 
-        send_keyboard('Выберите время:', buttons, chat_id)
+        send_keyboard('Выберите время:', buttons, self.chat_id)
 
         return
 
-    def metrika_telegram_inline_subscribe(self, hour, chat_id):
+    def metrika_telegram_inline_subscribe(self, hour, chat_id=False):
 
-        scheduler.add_job(self.metrika_telegram_daily, args=['today', chat_id] , trigger='cron', hour=hour, id=str(chat_id), replace_existing=True)
+        if not chat_id:
+            chat_id = self.chat_id
+
+        scheduler.add_job(self.metrika_telegram_daily, args=['today'], trigger='cron', hour=hour, id=str(chat_id), replace_existing=True)
 
         return
 
-    def metrika_telegram_unsubscribe(self, chat_id):
+    def metrika_telegram_unsubscribe(self):
 
         buttons = [[{'text': 'Выбрать другое время', 'callback_data': '/metrika_unsubscribe resubscribe'}],
                    [{'text': 'Отписаться', 'callback_data': '/metrika_unsubscribe'}]]
 
-        data = self.db.metrika_subscriptions.find_one({'chat_id': chat_id})
+        data = self.db.metrika_subscriptions.find_one({'chat_id': self.chat_id})
 
         if not data:
-            send_text('Вы не подписаны на дайджест', chat_id)
+            send_text('Вы не подписаны на дайджест', self.chat_id)
             return
 
         hour = data.get('time')
 
-        send_keyboard('Вы подписаны на ежедневный дайджест в {}:00'.format(hour), buttons, chat_id)
+        send_keyboard('Вы подписаны на ежедневный дайджест в {}:00'.format(hour), buttons, self.chat_id)
 
         return
 
-    def metrika_telegram_inline_unsubscribe(self, chat_id):
+    def metrika_telegram_inline_unsubscribe(self):
 
-        if scheduler.get_job(str(chat_id)):
-           scheduler.remove_job(str(chat_id))
-           send_text('Вы отписались от дайджеста', chat_id)
+        if scheduler.get_job(str(self.chat_id)):
+           scheduler.remove_job(str(self.chat_id))
+           send_text('Вы отписались от дайджеста', self.chat_id)
         else:
-            send_text('Вы не подписаны на дайджест', chat_id)
+            send_text('Вы не подписаны на дайджест', self.chat_id)
 
-        self.db.metrika_subscriptions.delete_one({'chat_id': chat_id})
+        self.db.metrika_subscriptions.delete_one({'chat_id': self.chat_id})
 
         return
