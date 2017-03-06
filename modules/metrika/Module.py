@@ -496,7 +496,7 @@ class MetrikaModule:
     def metrika_telegram_subscribe(self, resubscribe=False):
 
         if scheduler.get_job(str(self.chat_id)) and not resubscribe:
-            self.metrika_telegram_unsubscribe(self.chat_id)
+            self.metrika_telegram_unsubscribe()
             return
 
         hours = ['19', '20', '21', '22', '23', '00']
