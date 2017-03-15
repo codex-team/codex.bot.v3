@@ -37,7 +37,7 @@ class MetrikaAPI(object):
         params = urlencode(self.get_params())
 
         try:
-            result_json = requests.get(self.URL + 'counter/{}'.format(self.COUNTER_ID),
+            result_json = requests.get(self.URL + 'management/v1/counter/{}'.format(self.COUNTER_ID),
                                        params=params,
                                        headers=self.HEADERS,
                                        timeout=5).json()
