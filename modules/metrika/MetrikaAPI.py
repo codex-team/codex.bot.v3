@@ -28,7 +28,6 @@ class MetrikaAPI(object):
     def get(self):
         greeting = MetrikaAPI.get_greeting()
         visits = self.get_visit_statistics()
-        links = self.get_ref_links()
         counter_name = self.get_counter_name()
 
         telegram_message = (("Hello, %s\n%s\n\n%s") % (counter_name, greeting, (visits + links)))
@@ -38,7 +37,7 @@ class MetrikaAPI(object):
         params = urlencode(self.get_params())
 
         try:
-            result_json = requests.get(self.URL + 'counter/{}'.format(self.COUNTER_ID),
+            result_json = requests.get(self.URL + 'management/v1/counter/{}'.format(self.COUNTER_ID),
                                        params=params,
                                        headers=self.HEADERS,
                                        timeout=5).json()
@@ -56,7 +55,7 @@ class MetrikaAPI(object):
         counters = []
 
         try:
-            result_json = requests.get(self.URL + 'counters',
+            result_json = requests.get(self.URL + 'management/v1/counters',
                                        params=params,
                                        headers=self.HEADERS,
                                        timeout=5).json()
@@ -109,7 +108,9 @@ class MetrikaAPI(object):
             Hits : 300
         """
 
-        params = {'id': self.COUNTER_ID, 'oauth_token': self.OAUTH_TOKEN, 'date2': time.strftime('%Y%m%d')}
+        params = {'id': self.COUNTER_ID, 'oauth_token': self.OAUTH_TOKEN,
+                  'date2': time.strftime('%Y%m%d'),
+                  'metrics': 'ym:s:visits,ym:s:pageviews,ym:s:users'}
         dt = time.strftime('%Y%m%d')
         do = datetime.strptime(dt, '%Y%m%d')
         if period == "today":
@@ -124,69 +125,16 @@ class MetrikaAPI(object):
         print(params)
 
         try:
-            result_json = requests.get(self.URL + 'stat/traffic/summary.json', params=params, timeout=5).json()
+            result_json = requests.get(self.URL + 'stat/v1/data/bytime', params=params, timeout=5).json()
 
-            stat = result_json['totals']
-            users = int(stat['visitors'])
-            hits = int(stat['page_views'])
+            stat = result_json['totals'][0]
+            users = int(stat[2])
+            hits = int(stat[1])
 
         except Exception as e:
             return None
 
         return (users, hits)
-
-    def get_ref_links(self):
-        """
-        method returns string of refferal links and number of visits
-        :param date1 string - date in format YYYYMMDD
-        :param date2 string - date in format YYYYMMDD
-        example
-            https://example.com : 500
-            https://example1.com : 100
-        """
-
-        message = None
-        params = urlencode(self.get_params(date1=True, date2=True))
-
-        try:
-            result_json = requests.get(self.URL + 'stat/sources/sites.json', params=params, timeout=5).json()
-
-        except Exception as e:
-            return "There was an error: %r" % e
-
-        if result_json['rows'] != 0:
-            for link_info in result_json['data']:
-                message.append((link_info['visits'], link_info['url']))
-            return message
-        else:
-            return None
-
-    def get_search_engine_stats(self):
-        """
-        method returns string, name of search engine and number of visits from them
-        :param date1 string - date in format YYYYMMDD
-        :param date2 string - date in format YYYYMMDD
-        example
-            Google: 500
-            Yandex: 300
-        """
-
-        message = ''
-        params = urlencode(self.get_params(date1=True, date2=True))
-
-        req = requests.get(self.URL + 'stat/sources/search_engines.json', params=params)
-        try:
-            res = requests.get(req)
-
-        except Exception as e:
-            return "There was an error: %r" % e
-
-        stat = json.load(res)
-
-        for search_engine in stat['data']:
-            message += "%s: %d\n" % (search_engine['name'].split(',')[0], search_engine['visits'])
-
-        return message
 
     def get_params(self, date1=False, date2=False):
         params = {'id': self.COUNTER_ID, 'oauth_token': self.OAUTH_TOKEN}
@@ -195,7 +143,3 @@ class MetrikaAPI(object):
         if date2:
             params['date2'] = time.strftime('%Y%m%d')
         return params
-
-    def send(self):
-        if not self.error:
-            send_to_chat(self.get(), self.chat_id, CConfig.MODULES['api_token'])
